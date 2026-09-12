@@ -1,6 +1,8 @@
 package com.connectSphere.postService.service;
 
+import com.connectSphere.postService.auth.AuthContextHolder;
 import com.connectSphere.postService.entity.PostLike;
+import com.connectSphere.postService.event.PostLiked;
 import com.connectSphere.postService.exception.BadRequestException;
 import com.connectSphere.postService.exception.ResourceNotFoundException;
 import com.connectSphere.postService.repository.PostLikeRepository;
@@ -8,6 +10,7 @@ import com.connectSphere.postService.repository.PostRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,11 +21,15 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Slf4j
 public class PostLikeService {
+    private final KafkaTemplate<Long, PostLiked> postLikedKafkaTemplate;
+
     private final ModelMapper mapper;
 
     private final PostLikeRepository postLikeRepository;
 
     private final PostRepository postRepository;
+
+    private final PostService postService;
 
     /**
      * Likes a post with the given postId.
@@ -30,7 +37,8 @@ public class PostLikeService {
      * @param postId The ID of the post to be liked.
      */
     public void likePost(final Long postId) {
-        Long userId = 1L; // Replace with actual user ID retrieval logic
+        Long userId = AuthContextHolder.getCurrentUserId();
+
         log.info("User with ID {} liking a post with ID {}", userId, postId);
 
         final var post = postRepository.findById(postId)
@@ -48,13 +56,20 @@ public class PostLikeService {
 
         final var like = new PostLike();
 
-        like.setPostId(post.getId());
-        like.setUserId(post.getUserId());
+        like.setPostId(postId);
+        like.setUserId(userId);
 
         postLikeRepository.save(like);
 
-        //        TODO: send notification to the owner of the post
+        final var likedPost = postService.getPostById(postId);
 
+        final var postLiked = PostLiked.builder()
+                                       .postId(postId)
+                                       .likerUserId(userId)
+                                       .postCreatorUserId(post.getUserId())
+                                       .build();
+
+        postLikedKafkaTemplate.send("post-liked", postLiked);
     }
 
     /**

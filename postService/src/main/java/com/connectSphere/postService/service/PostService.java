@@ -1,13 +1,16 @@
 package com.connectSphere.postService.service;
 
+import com.connectSphere.postService.client.ConnectionServiceClient;
 import com.connectSphere.postService.dto.CreatePostResponseDto;
 import com.connectSphere.postService.dto.CreatePostRequestDto;
 import com.connectSphere.postService.entity.Post;
+import com.connectSphere.postService.event.PostCreated;
 import com.connectSphere.postService.exception.ResourceNotFoundException;
 import com.connectSphere.postService.repository.PostRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -19,9 +22,13 @@ import java.util.List;
 @RequiredArgsConstructor
 @Slf4j
 public class PostService {
+    private final KafkaTemplate<Long, PostCreated> postCreatedKafkaTemplate;
+
     private final ModelMapper mapper;
 
     private final PostRepository postRepository;
+
+    private final ConnectionServiceClient serviceClient;
 
     /**
      * Creates a new post based on the provided request data.
@@ -34,11 +41,24 @@ public class PostService {
                                            , final Long userId) {
         log.info("Creating post for user with id: {}", userId);
 
-        final var post = mapper.map(request, Post.class);
+        var post = mapper.map(request, Post.class);
 
         post.setUserId(userId);
 
-        postRepository.save(post);
+        post = postRepository.save(post);
+
+        final var connections = serviceClient.getFirstDegreeConnections(userId);
+
+        for(final var connection : connections) {
+            final var createdPost = PostCreated.builder()
+                                               .postId(post.getId())
+                                               .content(post.getContent())
+                                               .creatorUserId(post.getUserId())
+                                               .creatorFriendUserId(connection.getUserId())
+                                               .build();
+
+            postCreatedKafkaTemplate.send("post-created", createdPost);
+        }
 
         return mapper.map(post, CreatePostResponseDto.class);
     }

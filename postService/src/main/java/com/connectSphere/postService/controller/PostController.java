@@ -1,5 +1,6 @@
 package com.connectSphere.postService.controller;
 
+import com.connectSphere.postService.auth.AuthContextHolder;
 import com.connectSphere.postService.dto.CreatePostResponseDto;
 import com.connectSphere.postService.dto.CreatePostRequestDto;
 import com.connectSphere.postService.service.PostService;
@@ -30,11 +31,18 @@ public class PostController {
      */
     @PostMapping
     public ResponseEntity<CreatePostResponseDto> createPost(@RequestBody final CreatePostRequestDto request) {
-        final var response = postService.createPost(request, 1L);
+        final var response = postService.createPost(request, AuthContextHolder.getCurrentUserId());
 
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * Retrieves a post by its ID.
+     *
+     * @param postId The ID of the post to retrieve.
+     *
+     * @return A response DTO containing the details of the retrieved post.
+     */
     @GetMapping("/{postId}")
     public ResponseEntity<CreatePostResponseDto> getPost(@PathVariable final Long postId) {
         final var response = postService.getPostById(postId);
@@ -42,6 +50,13 @@ public class PostController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * Retrieves all posts associated with a specific user.
+     *
+     * @param userId The ID of the user whose posts are to be retrieved.
+     * @return A list of response DTOs containing the details of the retrieved
+     * posts.
+     */
     @GetMapping("/users/{userId}/allPosts")
     public ResponseEntity<List<CreatePostResponseDto>> getAllPostsOfUser(@PathVariable final Long userId) {
         final var response = postService.getAllPostsOfUser(userId);

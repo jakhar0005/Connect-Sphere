@@ -4,6 +4,7 @@ import com.connectSphere.userService.dto.LoginRequestDto;
 import com.connectSphere.userService.dto.SignupRequestDto;
 import com.connectSphere.userService.dto.UserDto;
 import com.connectSphere.userService.entity.User;
+import com.connectSphere.userService.event.CreateUser;
 import com.connectSphere.userService.exception.BadRequestException;
 import com.connectSphere.userService.exception.ResourceNotFoundException;
 import com.connectSphere.userService.repository.UserRepository;
@@ -11,7 +12,10 @@ import com.connectSphere.userService.utils.BCrypt;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 /**
  * The AuthService class provides authentication-related services such as user
@@ -23,9 +27,22 @@ import org.springframework.stereotype.Service;
 public class AuthService {
     private final JwtService jwtService;
 
+    private final KafkaTemplate<String, CreateUser> kafkaTemplate;
+
     private final ModelMapper mapper;
 
     private final UserRepository userRepository;
+
+    /**
+     * Get all users.
+     *
+     * @return All users.
+     */
+    public List<UserDto> getAllUsers() {
+        final var users = userRepository.findAll();
+
+        return users.stream().map(user -> mapper.map(user, UserDto.class)).toList();
+    }
 
     /**
      * Authenticates a user based on the provided login request data.
@@ -71,11 +88,17 @@ public class AuthService {
                                               + "email id:" + request.getEmail());
         }
 
-        final var user = mapper.map(request, User.class);
+        var user = mapper.map(request, User.class);
 
         user.setPassword(BCrypt.hashPassword(request.getPassword()));
 
-        userRepository.save(user);
+        user = userRepository.save(user);
+
+        final var createUser = new CreateUser();
+        createUser.setUserId(user.getId());
+        createUser.setName(user.getName());
+
+        kafkaTemplate.send("user-created", createUser);
 
         return mapper.map(user, UserDto.class);
     }

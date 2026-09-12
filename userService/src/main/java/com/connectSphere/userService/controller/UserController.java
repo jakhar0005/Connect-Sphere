@@ -7,10 +7,9 @@ import com.connectSphere.userService.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * REST controller for user authentication and registration.
@@ -50,5 +49,15 @@ public class UserController {
         final var token = authService.login(loginRequestDto);
 
         return ResponseEntity.ok(token);
+    }
+
+    /**
+     * Get all users.
+     *
+     * @return All users.
+     */
+    @GetMapping
+    public ResponseEntity<List<UserDto>> getAllUsers() {
+        return ResponseEntity.ok(authService.getAllUsers());
     }
 }
