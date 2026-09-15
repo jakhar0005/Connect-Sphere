@@ -1,0 +1,15 @@
+server:
+    # Config Server runs on port 8888
+    port: 8888
+
+spring:
+    application:
+        # Name of this application
+        name: config-server
+
+    cloud:
+        config:
+            server:
+                git:
+                    # Read configuration from your separate Git repository
+                    uri: https://github.com/jakhar0005/connectsphere-config.git

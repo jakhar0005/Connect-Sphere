@@ -1,0 +1,249 @@
+#cd ~/Downloads/ConnectSphere
+#docker compose config = check is configuration correct
+#docker compose build
+#docker compose up
+
+services:
+
+    # Eureka Server
+    # Build the Docker image from the discoverService folder
+    # Port 8761 on your PC -> Port 8761 inside the container
+    discover-service:
+        build: ./discoverService
+        ports:
+            - "8761:8761"
+        healthcheck:
+            # Check Eureka's Actuator health endpoint.
+            # Docker uses this to know when Eureka is ready.
+            test: [ "CMD-SHELL", "curl -f http://localhost:8761/actuator/health || exit 1" ]
+
+            # Check every 10 seconds.
+            interval: 10s
+
+            # Give the request 5 seconds to complete.
+            timeout: 5s
+
+            # Try 10 times before marking it unhealthy.
+            retries: 10
+
+            # Give Eureka time to start before health checks begin.
+            start_period: 30s
+
+
+    # PostgreSQL database
+    # Use the official PostgreSQL 17 Docker image
+    postgres:
+        image: postgres:17
+
+        # Username used to connect to PostgreSQL
+        environment:
+            POSTGRES_USER: postgres
+
+            # Password for the postgres user
+            POSTGRES_PASSWORD: user
+
+        # Makes PostgreSQL available on port 5432 on your PC
+        ports:
+            - "5433:5432"
+
+        # Create our three databases when PostgreSQL
+        # is initialized for the first time
+        volumes:
+            # Keep PostgreSQL data even when container is removed
+            - postgres_data:/var/lib/postgresql/data
+
+            # Create databases when PostgreSQL is initialized first time
+            - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+
+    # Neo4j database
+    # Use the official Neo4j Docker image
+    neo4j:
+        image: neo4j:latest
+        # Neo4j provides:
+        # 7474 -> Web browser interface
+        # 7687 -> Application/database connection
+        # Username and password for Neo4j
+        environment:
+            # Neo4j login username
+            NEO4J_AUTH: neo4j/user@1234
+        ports:
+            # You open this in your browser to see/manage the database.
+            - "7474:7474"
+
+            # Your Connection Service uses this port.
+            - "7687:7687"
+
+    # Kafka server
+    # This runs Kafka inside Docker.
+    kafka:
+        image: apache/kafka:4.1.0
+
+        # Windows Kafbat UI connects to localhost:9092
+        # Docker services connect to kafka:9092
+        ports:
+            - "9092:29092"
+
+        # Kafka configuration
+        environment:
+
+            # ID of this Kafka broker
+            # We have only one broker, so the ID is 1
+            KAFKA_NODE_ID: 1
+
+            # This Kafka server works as both:
+            # broker = stores and sends messages
+            # controller = manages the Kafka cluster
+            KAFKA_PROCESS_ROLES: broker,controller
+
+            # Define the three listeners:
+            # INTERNAL  = communication from Docker services
+            # EXTERNAL  = communication from Windows
+            # CONTROLLER = Kafka controller communication
+            KAFKA_LISTENERS: INTERNAL://:9092,EXTERNAL://:29092,CONTROLLER://:9093
+
+            # Tell Kafka what address to give to clients
+            # Docker services get kafka:9092
+            # Windows applications get localhost:9092
+            KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:9092
+
+            # Tell Kafka which protocol each listener uses
+            KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+
+            # Kafka brokers communicate using the internal listener
+            KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+
+            # CONTROLLER is used for controller communication
+            KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+
+            # We have one controller
+            # It runs inside the kafka container
+            KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+
+            # Kafka stores consumer offsets in an internal topic
+            # We have one broker, so keep one copy
+            KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+            # Kafka transaction information uses one copy
+            # because we have one broker
+            KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+
+            # At least one broker must be available
+            KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+
+            # Don't wait before assigning partitions to a new consumer group
+            # This makes local startup faster
+            KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+
+    # Kafbat UI
+    # Web UI to view Kafka topics, messages and consumers
+    kafbat-ui:
+        image: ghcr.io/kafbat/kafka-ui:latest
+
+        ports:
+            # Windows port 8081 → Kafbat port 8080
+            - "8081:8080"
+
+        environment:
+            # Name shown in Kafbat
+            KAFKA_CLUSTERS_0_NAME: connectsphere
+
+            # Kafka address INSIDE Docker
+            KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+
+        depends_on:
+            - kafka
+
+    # User Service
+    # Build the Docker image from the userService folder
+    # User Service needs Eureka, PostgreSQL and Kafka
+    user-service:
+        build: ./userService
+        depends_on:
+            discover-service:
+                condition: service_healthy
+
+            postgres:
+                condition: service_started
+
+            kafka:
+                condition: service_started
+
+
+    # Post Service
+    # Build the Docker image from the postService folder
+    # Post Service needs Eureka, PostgreSQL and Kafka
+    post-service:
+        build: ./postService
+        depends_on:
+            discover-service:
+                condition: service_healthy
+
+            postgres:
+                condition: service_started
+
+            kafka:
+                condition: service_started
+
+
+    # Connection Service
+    # Build the Docker image from the connectionService folder
+    # Connection Service needs Eureka, Neo4j and Kafka
+    connection-service:
+        build: ./connectionService
+        depends_on:
+            discover-service:
+                condition: service_healthy
+
+            postgres:
+                condition: service_started
+
+            kafka:
+                condition: service_started
+
+
+    # Notification Service
+    # Build the Docker image from the notificationService folder
+    # Notification Service needs Eureka, PostgreSQL and Kafka
+    notification-service:
+        build: ./notificationService
+        depends_on:
+            discover-service:
+                condition: service_healthy
+
+            postgres:
+                condition: service_started
+
+            kafka:
+                condition: service_started
+
+
+    # Uploader Service
+    # Build the Docker image from the uploaderService folder
+    # Uploader Service uses Eureka
+    uploader-service:
+        build: ./uploaderService
+        depends_on:
+            discover-service:
+                condition: service_healthy
+
+
+    # API Gateway
+    # Build the Docker image from the APIGateway folder
+    # API Gateway uses Eureka to find other services
+    api-gateway:
+        build: ./APIGateway
+
+        # Make API Gateway available from your PC
+        # localhost:9040 -> container:9040
+        ports:
+            - "9040:9040"
+
+        depends_on:
+            discover-service:
+                condition: service_healthy
+
+
+# Define the persistent volume
+volumes:
+    postgres_data:
