@@ -38,6 +38,7 @@ spec:
         - name: config-server
 
           image: jakhar0005/connect-sphere-config-server
+          imagePullPolicy: Always
 
           # Config Server listens on 8888
           ports:
