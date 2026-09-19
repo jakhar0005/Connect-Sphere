@@ -17,9 +17,3 @@ spring:
     # Now connect to bucket go to IAM -> service account -> create account -> select storage = cloud storage -> Storage object admin -> Done
     # Now created account click on 3 dots -> manage keys -> add key -> create new keys -> JSON -> create -> keys will be downloaded. and add those here the keys.
     # Also add google cloud storage maven dependency
-#    gcloud:
-#        storage-bucket-name: connectsphere-media-dev
-#        storage-access-key: >
-#            {
-
-#            }
