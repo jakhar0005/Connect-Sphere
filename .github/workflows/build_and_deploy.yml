@@ -287,37 +287,40 @@ jobs:
 # If the new Pods fail to start, this step will fail
 
 
-
-#    Developer pushes code
-#    ↓
-#    GitHub
-#    ↓
-#    GitHub Actions starts
-#    ↓
-#    Checkout code
-#    ↓
-#    Setup Java 21
-#    ↓
-#    Build JAR
-#    ↓
-#    Login to Docker Hub
-#    ↓
-#    Build Docker image
-#    ↓
-#    Push Docker image
-#    ↓
-#    Login to Google Cloud
-#    ↓
-#    Get GKE credentials
-#    ↓
-#    kubectl set image
-#    ↓
-#    Kubernetes Deployment
-#    ↓
-#    New Pod created
-#    ↓
-#    New Docker image runs
-#    ↓
-#    rollout status
-#    ↓
-#    Deployment successful
+# Developer pushes code
+#        ↓
+#      GitHub
+#        ↓
+# GitHub Actions starts
+#        ↓
+# Checkout code
+#        ↓
+# Setup Java 21
+#        ↓
+# Login to Docker Hub
+#        ↓
+# Set image tag (Git commit SHA)
+#        ↓
+# Build JAR + Build Docker image + Push image
+#        ↓
+#       Jib
+#        ↓
+# Docker Hub
+#        ↓
+# Login to Google Cloud
+#        ↓
+# Get GKE credentials
+#        ↓
+# kubectl set image
+#        ↓
+# Kubernetes Deployment updated
+#        ↓
+# Kubernetes creates New Pod
+#        ↓
+# New Pod pulls the new image
+#        ↓
+# New Docker image runs
+#        ↓
+# rollout status
+#        ↓
+# Deployment successful
