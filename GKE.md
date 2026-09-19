@@ -13,3 +13,8 @@ Important: Set the path to Google cloud sdk then you can use google cloud cli.
 11.Install plugin by running command gcloud components install gke-gcloud-auth-plugin
 12.Create a clustor by going to Kubernetes engine select clusters -> select auopilot one set name region southeastasia1 then next next create.
 13.Now connect to your google clustor using cli by command gcloud container clusters get-credentials <CLUSTER_NAME> --region=<REGION_NAME>
+
+IN GKE image running doesnt get updated itself if you doesnt have image:tag, it will basically 
+start the cached image again so have to explicitly use below command and also change version in pom.xml
+then it will work properky if you want to automate use github actions.
+kubectl set image deployment/config-server config-server=jakhar0005/connect-sphere-config-server:0.0.5-SNAPSHOT

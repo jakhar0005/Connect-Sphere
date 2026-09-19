@@ -1,0 +1,349 @@
+# Name of this GitHub Actions workflow
+# This is the name you will see under GitHub → Actions
+name: SpringBoot CI/CD Pipeline
+
+
+# Defines when this workflow should run
+on:
+
+    # Run the workflow whenever code is pushed
+    push:
+
+        # Only run automatically when code is pushed to the master branch
+        branches: [ master ]
+
+    # Also allow us to manually start the workflow from GitHub Actions
+    workflow_dispatch:
+
+
+# Global environment variables
+# These variables can be used by all jobs and steps below
+env:
+
+    # Get the GCP project ID from GitHub Secrets
+    # GKE_PROJECT is stored securely in GitHub
+    PROJECT_ID: ${{ secrets.GKE_PROJECT }}
+
+    # Name of the Kubernetes/GKE cluster
+    GKE_CLUSTER: connect-sphere-cluster
+
+    # Location of the GKE cluster
+    # For your Autopilot regional cluster, this is a region
+    GKE_ZONE: asia-southeast1
+
+
+# Defines the jobs that GitHub Actions will execute
+jobs:
+
+    # Name of the job
+    Build:
+
+        # GitHub provides a temporary Ubuntu machine to run this job
+        runs-on: ubuntu-latest
+
+
+        # Matrix allows the same job to run for multiple services
+        # Instead of writing the entire build process 8 times,
+        # GitHub runs this job once for every entry below
+        strategy:
+            matrix:
+
+                # List of microservices that should be built and deployed
+                include:
+
+                    # ---------------- CONFIG SERVER ----------------
+
+                    # Folder containing Config Server source code
+                    - folder: config-server
+
+                        # Docker image name that will be created
+                      image: connect-sphere-config-server
+
+                        # Kubernetes Deployment that should receive the new image
+                      deployment: config-server
+
+
+                    # ---------------- API GATEWAY ----------------
+
+                    # Folder containing API Gateway source code
+                    - folder: APIGateway
+
+                        # Docker image name
+                      image: connect-sphere-api-gateway
+
+                        # Kubernetes Deployment name
+                      deployment: api-gateway
+
+
+                    # ---------------- CONNECTION SERVICE ----------------
+
+                    # Folder containing Connection Service source code
+                    - folder: connectionService
+
+                        # Docker image name
+                      image: connect-sphere-connection-service
+
+                        # Kubernetes Deployment name
+                      deployment: connection-service
+
+
+                    # ---------------- DISCOVER SERVICE ----------------
+
+                    # Folder containing Discover Service source code
+                    - folder: discoverService
+
+                        # Docker image name
+                      image: connect-sphere-discover-service
+
+                        # Kubernetes Deployment name
+                      deployment: discover-service
+
+
+                    # ---------------- NOTIFICATION SERVICE ----------------
+
+                    # Folder containing Notification Service source code
+                    - folder: notificationService
+
+                        # Docker image name
+                      image: connect-sphere-notification-service
+
+                        # Kubernetes Deployment name
+                      deployment: notification-service
+
+
+                    # ---------------- POST SERVICE ----------------
+
+                    # Folder containing Post Service source code
+                    - folder: postService
+
+                        # Docker image name
+                      image: connect-sphere-post-service
+
+                        # Kubernetes Deployment name
+                      deployment: post-service
+
+
+                    # ---------------- UPLOADER SERVICE ----------------
+
+                    # Folder containing Uploader Service source code
+                    - folder: uploaderService
+
+                        # Docker image name
+                      image: connect-sphere-uploader-service
+
+                        # Kubernetes Deployment name
+                      deployment: uploader-service
+
+
+                    # ---------------- USER SERVICE ----------------
+
+                    # Folder containing User Service source code
+                    - folder: userService
+
+                        # Docker image name
+                      image: connect-sphere-user-service
+
+                        # Kubernetes Deployment name
+                      deployment: user-service
+
+
+        # ==========================================================
+        # STEPS
+        # ==========================================================
+
+        steps:
+
+            # Download the ConnectSphere source code
+            # GitHub Actions starts with a clean machine,
+            # so we need to checkout our repository first
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+
+            # Install Java 21 on the GitHub Actions machine
+            - name: Set up Java 21
+              uses: actions/setup-java@v4
+
+              with:
+
+                  # Java distribution
+                  distribution: 'temurin'
+
+                  # Java version required by the project
+                  java-version: '21'
+
+
+            # Create a Docker image tag from the current Git commit
+            - name: Set image tag
+              id: vars
+
+                # git rev-parse --short HEAD gives a short version of
+                # the current Git commit ID
+                #
+                # Example:
+                # commit = a8f73b91c2...
+                # tag    = a8f73b9
+                #
+                # The value is stored as:
+                # tag=a8f73b9
+              run: echo "tag=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+
+            # Build the Java application JAR
+            - name: Build jar
+
+                # Run this command inside the service's folder
+                # matrix.folder changes for every service
+                #
+                # Example:
+                # connectionService
+                # postService
+                # userService
+              working-directory: ${{ matrix.folder }}
+
+                # Use Maven Wrapper to build the application
+                #
+                # clean  → removes previous build files
+                # package → compiles code and creates the JAR
+                # -DskipTests → don't execute tests during this build
+              run: ./mvnw clean package -DskipTests
+
+
+            # Login to Docker Hub
+            # GitHub Actions needs authentication before pushing images
+            - name: Log in to Docker Hub
+              uses: docker/login-action@v3
+
+              with:
+
+                  # Docker Hub username stored in GitHub Secrets
+                  username: ${{ secrets.DOCKER_USERNAME }}
+
+                  # Docker Hub password/token stored in GitHub Secrets
+                  password: ${{ secrets.DOCKER_PASSWORD }}
+
+
+            # Build the Docker image and push it to Docker Hub
+            - name: Build and push Docker image
+              uses: docker/build-push-action@v5
+
+              with:
+
+                  # Docker build context
+                  #
+                  # matrix.folder changes depending on the service
+                  #
+                  # Example:
+                  # ./connectionService
+                  # ./postService
+                  context: ./${{ matrix.folder }}
+
+                  # Push the image to Docker Hub after building it
+                  push: true
+
+                  # Create TWO tags for the same image.
+                  # First tag = Git commit ID, e.g.
+                  #   jakhar0005/connect-sphere-user-service:a8f73b9
+                  # This gives every build a unique version.
+                  # Second tag = latest, e.g.
+                  #   jakhar0005/connect-sphere-user-service:latest
+                  #
+                  # NOTE: this is a literal block scalar (the "|"), so anything
+                  # indented under "tags:" becomes part of the actual value sent
+                  # to docker/build-push-action — comments must stay OUTSIDE
+                  # this block (above, like this) or they'd be treated as tags.
+                  tags: |
+                      ${{ secrets.DOCKER_USERNAME }}/${{ matrix.image }}:${{ steps.vars.outputs.tag }}
+                      ${{ secrets.DOCKER_USERNAME }}/${{ matrix.image }}:latest
+            
+
+            # Authenticate GitHub Actions with Google Cloud
+            # This allows the workflow to communicate with GCP/GKE
+            - name: Authenticate to GCP
+              uses: google-github-actions/auth@v2
+
+              with:
+
+                  # Service-account credentials stored securely in GitHub Secrets
+                  credentials_json: ${{ secrets.GKE_SA_KEY }}
+
+
+            # Install/configure the gcloud CLI on the GitHub Actions machine
+            - name: Set up gcloud
+              uses: google-github-actions/setup-gcloud@v2
+
+
+            # Get Kubernetes credentials for your GKE cluster
+            #
+            # After this step, kubectl can communicate with your
+            # ConnectSphere GKE cluster
+            - name: Get GKE credentials
+              uses: google-github-actions/get-gke-credentials@v2
+
+              with:
+
+                  # GKE cluster name
+                  cluster_name: ${{ env.GKE_CLUSTER }}
+
+                  # Region/location of the cluster
+                  location: ${{ env.GKE_ZONE }}
+
+
+            # Replace the image used by the Kubernetes Deployment
+            # with the newly built Docker image
+            - name: Deploy updated image
+              run: |
+                  kubectl set image deployment/${{ matrix.deployment }} \
+                  ${{ matrix.deployment }}=${{ secrets.DOCKER_USERNAME }}/${{ matrix.image }}:${{ steps.vars.outputs.tag }}
+                  kubectl rollout status deployment/${{ matrix.deployment }}
+# Example generated command:
+#
+# kubectl set image deployment/connection-service \
+# connection-service=jakhar0005/connect-sphere-connection-service:a8f73b9
+#
+# kubectl set image changes the container image
+# inside the existing Kubernetes Deployment
+
+
+# Wait until Kubernetes finishes updating the Deployment
+#
+# This makes GitHub Actions wait for the new Pods to become
+# successfully rolled out
+#
+# If the new Pods fail to start, this step will fail
+
+
+
+#    Developer pushes code
+#    ↓
+#    GitHub
+#    ↓
+#    GitHub Actions starts
+#    ↓
+#    Checkout code
+#    ↓
+#    Setup Java 21
+#    ↓
+#    Build JAR
+#    ↓
+#    Login to Docker Hub
+#    ↓
+#    Build Docker image
+#    ↓
+#    Push Docker image
+#    ↓
+#    Login to Google Cloud
+#    ↓
+#    Get GKE credentials
+#    ↓
+#    kubectl set image
+#    ↓
+#    Kubernetes Deployment
+#    ↓
+#    New Pod created
+#    ↓
+#    New Docker image runs
+#    ↓
+#    rollout status
+#    ↓
+#    Deployment successful

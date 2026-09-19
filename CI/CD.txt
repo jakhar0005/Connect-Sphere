@@ -1,0 +1,6 @@
+1. Go to Github -> open your repository on which you want to do ci/cd -> open settings
+-> secrets and variables -> actions -> add your docker username/pass, gke project name by clicking on project name on top and copy project id
+and you gk_sa_key for that tthe json key you created in service account in iam conver that int obase64 and use it.
+2.Ad you yml and just commit and you are good to go.
+3. You can check github actions in action tab of your repository.
+4. Github action is in folder .github
