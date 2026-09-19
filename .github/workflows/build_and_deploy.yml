@@ -195,7 +195,7 @@ jobs:
                 # clean  → removes previous build files
                 # package → compiles code and creates the JAR
                 # -DskipTests → don't execute tests during this build
-              run: ./mvnw clean package -DskipTests
+              run: bash ./mvnw clean package -DskipTests
 
 
             # Login to Docker Hub
