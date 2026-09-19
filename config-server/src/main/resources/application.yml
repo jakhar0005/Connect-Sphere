@@ -6,12 +6,6 @@ spring:
     application:
         # Name of this application
         name: config-server
-
-eureka:
-    client:
-        register-with-eureka: false
-        fetch-registry: false
-
     cloud:
         config:
             server:
@@ -21,3 +15,8 @@ eureka:
                     search-paths:
                         - config-repo
                     default-label: master
+
+eureka:
+    client:
+        register-with-eureka: false
+        fetch-registry: false
