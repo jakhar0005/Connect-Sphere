@@ -87,17 +87,6 @@ jobs:
                       deployment: connection-service
 
 
-                    # ---------------- DISCOVER SERVICE ----------------
-
-                    # Folder containing Discover Service source code
-                    - folder: discoverService
-
-                        # Docker image name
-                      image: connect-sphere-discover-service
-
-                        # Kubernetes Deployment name
-                      deployment: discover-service
-
 
                     # ---------------- NOTIFICATION SERVICE ----------------
 
