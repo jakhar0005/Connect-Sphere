@@ -11,7 +11,7 @@ spring:
             server:
                 git:
                     # Read configuration from your separate Git repository
-                    uri: https://github.com/jakhar0005/ConnectSphere.git
+                    uri: https://github.com/jakhar0005/Connect-Sphere.git
                     search-paths:
                         - config-repo
                     default-label: master
