@@ -4,4 +4,5 @@ and you gk_sa_key for that tthe json key you created in service account in iam c
 2.Ad you yml and just commit and you are good to go.
 3. You can check github actions in action tab of your repository.
 4. Github action is in folder .github
-5. Additional step i did IAM → find connect-sphere@...  service → Edit → Add another role → Kubernetes Engine Cluster Viewer → Save.
+5. Additional step i did IAM → find connect-sphere@...  service → Edit →
+Add another role → Kubernetes Engine Cluster Viewer → Save.
