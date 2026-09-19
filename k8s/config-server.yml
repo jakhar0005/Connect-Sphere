@@ -40,6 +40,18 @@ spec:
           image: jakhar0005/connect-sphere-config-server
           imagePullPolicy: Always
 
+          env:
+            - name: GITHUB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: connectsphere-config
+                  key: GITHUB_USERNAME
+            - name: GITHUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: connectsphere-secret
+                  key: GITHUB_TOKEN
+
           # Config Server listens on 8888
           ports:
             - containerPort: 8888
