@@ -1,0 +1,163 @@
+# ============================================================
+# STATEFULSET
+# ============================================================
+
+# apiVersion tells Kubernetes which API version to use
+apiVersion: apps/v1
+
+# kind tells Kubernetes what we are creating
+# StatefulSet is mainly used for applications that need
+# stable identity and persistent storage
+kind: StatefulSet
+
+metadata:
+    # Name of the StatefulSet
+    name: user-db
+
+spec:
+    # Tells the StatefulSet which Pods belong to it
+    # It looks for Pods having: app: user-db
+    selector:
+        matchLabels:
+            app: user-db
+
+    # Name of the Service used by this StatefulSet
+    serviceName: user-db
+
+    # Number of PostgreSQL Pods to create
+    replicas: 1
+
+    # Template describes the Pod that StatefulSet will create
+    template:
+        metadata:
+            # Label attached to the Pod
+            # Service and StatefulSet use this label to find the Pod
+            labels:
+                app: user-db
+
+        spec:
+            # Containers running inside the Pod
+            containers:
+
+                # Name of the PostgreSQL container
+                - name: user-db
+
+                    # Docker image used to create the container
+                  image: postgres:16
+
+                    # CPU and memory limits/requests
+                  resources:
+
+                      # Maximum resources this container can use
+                      limits:
+                          memory: "200Mi"
+                          cpu: "200m"
+
+                      # Minimum resources Kubernetes requests
+                      requests:
+                          memory: "100Mi"
+                          cpu: "100m"
+
+                    # Environment variables for PostgreSQL
+                  env:
+
+                      # PostgreSQL username
+                      - name: POSTGRES_USER
+                        valueFrom:
+                          configMapKeyRef:
+                            name: connectsphere-config
+                            key: POSTGRES_DB_USERNAME
+
+                      # PostgreSQL password
+                      - name: POSTGRES_PASSWORD
+                        valueFrom:
+                          secretKeyRef:
+                            name: connectsphere-secret
+                            key: POSTGRES_DB_PASSWORD
+
+                      # Database name PostgreSQL creates
+                      - name: POSTGRES_DB
+                        valueFrom:
+                          configMapKeyRef:
+                            name: connectsphere-config
+                            key: USER_DB_NAME
+
+                      # Location where PostgreSQL stores its data
+                      - name: PGDATA
+                        value: /var/lib/postgresql/data/pgdata
+
+                    # Port PostgreSQL listens on inside the container
+                  ports:
+                      - containerPort: 5432
+
+                    # Connect persistent storage to the container
+                  volumeMounts:
+                      - name: data
+
+                          # PostgreSQL will store its data here
+                        mountPath: /var/lib/postgresql/data
+
+    # Create persistent storage for the PostgreSQL Pod
+    # This is outside "containers" because it belongs to StatefulSet spec
+    volumeClaimTemplates:
+
+        # Name of the persistent volume claim
+        - metadata:
+              name: data
+
+          spec:
+
+              # Only one Pod can write to this volume at a time
+              accessModes:
+                  - ReadWriteOnce
+
+              resources:
+
+                  # Ask Kubernetes for 1 GB of storage
+                  requests:
+                      storage: 1Gi
+
+              # Storage class used to create the volume
+              storageClassName: standard-rwo
+
+              # Store data using a normal filesystem
+              volumeMode: Filesystem
+
+
+# ============================================================
+# SERVICE
+# ============================================================
+
+# "---" means a new Kubernetes resource starts here
+---
+
+# Kubernetes API version for Service
+apiVersion: v1
+
+# We are creating a Service
+kind: Service
+
+metadata:
+    # Service name
+    name: user-db
+
+spec:
+
+    # None means this is a Headless Service
+    # It does not get a normal ClusterIP
+    # Kubernetes can provide DNS directly to the Pod
+    clusterIP: None
+
+    # Service finds the PostgreSQL Pod using this label
+    # This MUST match the Pod label above
+    selector:
+        app: user-db
+
+    # Service exposes PostgreSQL
+    ports:
+
+        # Port other applications use to connect
+        - port: 5432
+
+            # Port on the PostgreSQL container
+          targetPort: 5432

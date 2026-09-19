@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: connection-service
+
+spec:
+  selector:
+    matchLabels:
+      app: connection-service
+
+  template:
+    metadata:
+      labels:
+        app: connection-service
+
+    spec:
+      containers:
+      - name: connection-service
+        image: jakhar0005/connect-sphere-connection-service
+
+        resources:
+          limits:
+            memory: "400Mi"
+            cpu: "200m"
+
+          requests:
+            memory: "200Mi"
+            cpu: "100m"
+
+        env:
+          - name: SPRING_PROFILES_ACTIVE
+            valueFrom:
+              configMapKeyRef:
+                  name: connectsphere-config
+                  key: SPRING_PROFILES_ACTIVE
+
+          - name: CONNECTION_DB_NAME
+            valueFrom:
+              configMapKeyRef:
+                name: connectsphere-config
+                key: CONNECTION_DB_NAME
+
+          - name: NEO4J_USERNAME
+            valueFrom:
+              configMapKeyRef:
+                name: connectsphere-config
+                key: NEO4J_USERNAME
+
+          - name: NEO4J_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: connectsphere-secret
+                key: NEO4J_PASSWORD
+
+          - name: KAFKA_BOOTSTRAP_SERVERS
+            valueFrom:
+              configMapKeyRef:
+                name: connectsphere-config
+                key: KAFKA_BOOTSTRAP_SERVERS
+
+        ports:
+        - containerPort: 9030
+
+---
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: connection-service
+
+spec:
+  selector:
+    app: connection-service
+
+  ports:
+  - port: 80
+    targetPort: 9030

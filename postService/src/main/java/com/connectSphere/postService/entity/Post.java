@@ -28,6 +28,11 @@ public class Post {
     private String content;
 
     /**
+     * The image of the post.
+     */
+    private String imageURL;
+
+    /**
      * The unique identifier of the user who created the post.
      */
     @Column(nullable = false)

@@ -1,0 +1,17 @@
+server.port: 9070
+server.servlet.context-path: /upload
+
+cloudinary:
+    # Read Cloudinary cloud name from Docker environment
+    cloud-name: ${CLOUDINARY_CLOUD_NAME}
+
+    # Read Cloudinary API key from Docker environment
+    api-key: ${CLOUDINARY_API_KEY}
+
+    # Read Cloudinary secret from Docker environment
+    api-secret: ${CLOUDINARY_API_SECRET}
+
+gcloud:
+    # Bucket name is not a secret
+    storage-bucket-name: ${GCLOUD_STORAGE_BUCKET_NAME:connectsphere-media-dev}
+    storage-access-key: ${GCLOUD_STORAGE_ACCESS_KEY}

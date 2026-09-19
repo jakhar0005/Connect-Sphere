@@ -1,0 +1,163 @@
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         1. USER / BROWSER                               │
+│                                                                         │
+│  User sends:                                                            │
+│  GET http://localhost:9040/api/v1/post/123                              │
+└───────────────────────────────┬─────────────────────────────────────────┘
+                                │
+                                │ HTTP Request
+                                ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         2. API GATEWAY                                  │
+│                         Port: 9040                                      │
+│                                                                         │
+│  Gateway receives:                                                      │
+│       /api/v1/post/123                                                  │
+│                                                                         │
+│  Gateway checks its route:                                              │
+│       /api/v1/post/**                                                   │
+│                                                                         │
+│  It decides:                                                            │
+│       "This request belongs to Post Service."                           │
+│                                                                         │
+│  Common config contains:                                                │
+│       POST_SERVICE_URI=http://post-service                              │
+└───────────────────────────────┬─────────────────────────────────────────┘
+                                │
+                                │ http://post-service
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         3. KUBERNETES DNS                               │
+│                                                                         │
+│  Kubernetes understands:                                               │
+│       post-service                                                       │
+│                                                                         │
+│  "post-service" is the Kubernetes Service name.                         │
+│                                                                         │
+│  DNS resolves:                                                          │
+│       post-service → Post Service Pod                                   │
+└───────────────────────────────┬─────────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         4. POST SERVICE                                 │
+│                         Port: 9010                                      │
+│                                                                         │
+│  Request reaches Spring Boot.                                           │
+│                                                                         │
+│  URL inside Post Service:                                               │
+│       /post/123                                                         │
+│                                                                         │
+│  Controller receives request:                                           │
+│       GET /post/123                                                     │
+│                                                                         │
+│  Controller calls:                                                      │
+│       PostService                                                        │
+└───────────────────────────────┬─────────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         5. SERVICE LAYER                                │
+│                                                                         │
+│  PostService executes business logic.                                   │
+│                                                                         │
+│  Example:                                                               │
+│       postRepository.findById(123)                                      │
+└───────────────────────────────┬─────────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         6. REPOSITORY / JPA                             │
+│                                                                         │
+│  Hibernate/JPA converts the repository call into SQL.                   │
+│                                                                         │
+│  Example SQL:                                                           │
+│       SELECT * FROM post WHERE id = 123;                                │
+│                                                                         │
+│  Now application needs PostgreSQL.                                      │
+└───────────────────────────────┬─────────────────────────────────────────┘
+                                │
+                                │ JDBC connection
+                                │
+                                │ jdbc:postgresql://post-db:5432/postDB
+                                ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         7. KUBERNETES DNS                               │
+│                                                                         │
+│  Application says:                                                      │
+│       post-db:5432                                                      │
+│                                                                         │
+│  Kubernetes understands:                                               │
+│       "post-db" = PostgreSQL Service                                    │
+│                                                                         │
+│  DNS resolves:                                                          │
+│       post-db → post-db Service                                         │
+└───────────────────────────────┬─────────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         8. POST-DB SERVICE                              │
+│                                                                         │
+│  Kubernetes Service:                                                    │
+│       name: post-db                                                     │
+│                                                                         │
+│  Service selector:                                                      │
+│       app: post-db                                                      │
+│                                                                         │
+│  It finds the PostgreSQL Pod having:                                    │
+│       app: post-db                                                      │
+└───────────────────────────────┬─────────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         9. POSTGRESQL POD                               │
+│                         Port: 5432                                      │
+│                                                                         │
+│  PostgreSQL receives connection:                                        │
+│                                                                         │
+│       Database = postDB                                                  │
+│       Username = user                                                    │
+│       Password = password                                                │
+│                                                                         │
+│  PostgreSQL authenticates the application.                              │
+│                                                                         │
+│  Then executes:                                                         │
+│       SELECT * FROM post WHERE id = 123;                                │
+└───────────────────────────────┬─────────────────────────────────────────┘
+                                │
+                                │ Database result
+                                ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         10. POST SERVICE                                │
+│                                                                         │
+│  PostgreSQL returns the row.                                            │
+│                                                                         │
+│  JDBC → Hibernate → Repository → Service → Controller                    │
+│                                                                         │
+│  Java object is created:                                                │
+│       Post(id=123, ...)                                                 │
+└───────────────────────────────┬─────────────────────────────────────────┘
+                                │
+                                │ JSON response
+                                ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         11. API GATEWAY                                 │
+│                                                                         │
+│  Gateway receives response from Post Service.                           │
+│                                                                         │
+│  Gateway sends response back to client.                                 │
+└───────────────────────────────┬─────────────────────────────────────────┘
+                                │
+                                │ HTTP Response
+                                ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         12. USER / BROWSER                              │
+│                                                                         │
+│  User receives:                                                         │
+│                                                                         │
+│  {                                                                      │
+│      "id": 123,                                                         │
+│      "title": "AARKJ"                                                   │
+│  }                                                                      │
+└─────────────────────────────────────────────────────────────────────────┘

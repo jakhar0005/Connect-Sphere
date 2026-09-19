@@ -1,0 +1,16 @@
+eureka:
+    client:
+        # Connect to Eureka using the Docker service name
+        service-url:
+            defaultZone: http://discover-service:8761/eureka
+        # Because now service discovery is being done by kubernetes.
+        register-with-eureka: false
+        fetch-registry: false
+
+
+
+USER_SERVICE_URI: http://user-service
+POST_SERVICE_URI: http://post-service
+NOTIFICATION_SERVICE_URI: http://notification-service
+CONNECTION_SERVICE_URI: http://connection-service
+UPLOADER_SERVICE_URI: http://uploader-service

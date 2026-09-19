@@ -1,0 +1,44 @@
+server:
+    # User service port
+    port: 9020
+
+    servlet:
+        # User service URL will start with /user
+        context-path: /user
+
+spring:
+    datasource:
+        # PostgreSQL container
+        url: jdbc:postgresql://${POSTGRES_DB_SERVER:postgres}:5432/${USER_DB_NAME:userDB}
+        username: ${POSTGRES_DB_USERNAME:postgres}
+        password: ${POSTGRES_DB_PASSWORD:user}
+
+    jpa:
+        # Create/update tables automatically
+        hibernate:
+            ddl-auto: update
+
+    kafka:
+        # Kafka container
+        bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+
+        producer:
+            # Kafka message key is Long
+            key-serializer: org.apache.kafka.common.serialization.LongSerializer
+
+            # Kafka message value is JSON
+            value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+jwt:
+    # JWT secret
+    secretKey: ${JWT_SECRET}
+
+# point to your kafka folder in my case it is cd C:\kafka.
+# create kafka clustor = $KAFKA_CLUSTER_ID = .\bin\windows\kafka-storage.bat random-uuid
+# create kafka clustor log(like kafka storage) = .\bin\windows\kafka-storage.bat format --standalone -t $KAFKA_CLUSTER_ID -c .\config\server.properties
+# run kafka = .\bin\windows\kafka-server-start.bat .\config\server.properties
+
+# remove clustor logs to create new clustor = Remove-Item -Recurse -Force C:\tmp\kraft-combined-logs
+# stop java proces =  Stop-Process -Name java -Force
+
+# run kkraft kafka ui = java "-Dspring.config.additional-location=application-local.yml" "--add-opens=java.rmi/javax.rmi.ssl=ALL-UNNAMED" -jar .\kafbat-ui-v1.0.0.jar

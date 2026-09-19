@@ -1,0 +1,52 @@
+server.port: 9040
+
+spring:
+    cloud:
+        gateway:
+            server:
+                webflux:
+                    routes:
+                        -   id: user-service
+                            uri: ${USER_SERVICE_URI:lb://USER-SERVICE}
+                            predicates:
+                                # v1/v2 are API versions used to support changes in an API
+                                # without breaking clients that still use the older version.
+                                # Example:
+                                # v1 may return { "name": "AARKJ" }
+                                # while v2 may return { "firstName": "AARK", "lastName": "J" }.
+                                # Existing clients continue using v1, while new clients use v2.
+                                - Path=/api/v1/user/**
+                            filters:
+                                - StripPrefix=2
+
+                        -   id: post-service
+                            uri: ${POST_SERVICE_URI:lb://POST-SERVICE}
+                            predicates:
+                                - Path=/api/v1/post/**
+                            filters:
+                                - StripPrefix=2
+                                - name: AuthenticationFilter
+
+                        -   id: connection-service
+                            uri: ${CONNECTION_SERVICE_URI:lb://CONNECTION-SERVICE}
+                            predicates:
+                                - Path=/api/v1/connection/**
+                            filters:
+                                - StripPrefix=2
+                                - name: AuthenticationFilter
+
+                        -   id: uploader-service
+                            uri: ${UPLOADER_SERVICE_URI:lb://UPLOADER-SERVICE}
+                            predicates:
+                                - Path=/api/v1/upload/**
+                            filters:
+                                - StripPrefix=2
+                                -   name: AuthenticationFilter
+jwt:
+    secretKey: ${JWT_SECRET}
+
+management:
+    endpoints:
+        web:
+            exposure:
+                include: "health,info"

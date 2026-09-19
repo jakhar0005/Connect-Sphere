@@ -1,0 +1,407 @@
+# See below for explanation for each line.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: kafka
+  name: kafka
+spec:
+  podManagementPolicy: Parallel
+  replicas: 2
+  selector:
+    matchLabels:
+      app: kafka
+  serviceName: kafka
+  template:
+    metadata:
+      labels:
+        app: kafka
+    spec:
+      containers:
+      - command:
+        - sh
+        - -exc
+        - |
+          export CLUSTER_ID="6PMpHYL9QkeyXRj9Nrp4KA" && \
+          export KAFKA_NODE_ID=${HOSTNAME##*-} 
+          export KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://${POD_NAME}.kafka:9092
+          export KAFKA_CONTROLLER_QUORUM_VOTERS="0@kafka-0.kafka:29093,1@kafka-1.kafka:29093" 
+          exec /etc/confluent/docker/run
+        env:
+        - name: KAFKA_CONTROLLER_LISTENER_NAMES
+          value: "CONTROLLER"
+        - name: KAFKA_LISTENERS
+          value: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:29093
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        name: kafka
+        image: docker.io/confluentinc/confluent-local:7.5.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 9092
+          name: tcp-kafka-int
+          protocol: TCP
+        - containerPort: 29093
+          name: tcp-kafka-ctrl
+          protocol: TCP
+        resources:
+          limits:
+            cpu: "200m"
+            memory: 1Gi
+          requests:
+            cpu: 100m
+            memory: 512Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          # readOnlyRootFilesystem: true
+          runAsGroup: 1000
+          runAsUser: 1000
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /etc/kafka
+          name: config
+      dnsPolicy: ClusterFirst
+      schedulerName: default-scheduler
+      securityContext:
+        fsGroup: 1000
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - emptyDir: {}
+        name: config
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: kafka
+  name: kafka
+spec:
+  clusterIP: None
+  ports:
+  - name: tcp-kafka-int
+    port: 9092
+    protocol: TCP
+    targetPort: tcp-kafka-int
+  - name: tcp-kafka-ctrl
+    port: 29093
+    protocol: TCP
+    targetPort: tcp-kafka-ctrl
+  selector:
+    app: kafka
+
+# # Kubernetes API version used for StatefulSet
+# apiVersion: apps/v1
+
+# # Creates a StatefulSet
+# # StatefulSet is used because Kafka brokers need stable Pod names
+# # such as kafka-0 and kafka-1
+# kind: StatefulSet
+
+# metadata:
+
+#   # Label attached to the StatefulSet
+#   # Used to identify this resource as part of the Kafka application
+#   labels:
+#     app: kafka
+
+#   # Name of the StatefulSet
+#   # Because replicas = 2, Pods will be:
+#   # kafka-0
+#   # kafka-1
+#   name: kafka
+
+# spec:
+
+#   # Allows multiple Kafka Pods to be created in parallel
+#   # kafka-0 and kafka-1 do not have to wait for each other
+#   podManagementPolicy: Parallel
+
+#   # Number of Kafka broker Pods to create
+#   replicas: 2
+
+#   # Tells the StatefulSet which Pods it manages
+#   # It manages Pods having the label app: kafka
+#   selector:
+#     matchLabels:
+#       app: kafka
+
+#   # Name of the Service associated with this StatefulSet
+#   # Used for stable network identity and DNS
+#   serviceName: kafka
+
+#   # Blueprint used to create each Kafka Pod
+#   template:
+
+#     metadata:
+
+#       # Label added to every Kafka Pod
+#       # This matches the StatefulSet selector above
+#       labels:
+#         app: kafka
+
+#     spec:
+
+#       containers:
+
+#       # Defines the Kafka container
+#       - command:
+
+#         # Start a shell inside the container
+#         - sh
+
+#         # -e = stop if a command fails
+#         # -x = print commands while executing
+#         # -c = execute the following script
+#         - -exc
+
+#         # Script executed before Kafka starts
+#         - |
+
+#           # Give both Kafka brokers the same Kafka Cluster ID
+#           # kafka-0 and kafka-1 must belong to the same cluster
+#           export CLUSTER_ID="6PMpHYL9QkeyXRj9Nrp4KA" && \
+
+#           # Get the Pod name from HOSTNAME
+#           # kafka-0 -> NODE_ID=0
+#           # kafka-1 -> NODE_ID=1
+#           # ${HOSTNAME##*-} removes everything before the last "-"
+#           export KAFKA_NODE_ID=${HOSTNAME##*-}
+
+#           # Tells Kafka the address other Kafka brokers/applications
+#           # should use to connect to this particular broker
+#           # kafka-0 -> kafka-0.kafka:9092
+#           # kafka-1 -> kafka-1.kafka:9092
+#           export KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://${POD_NAME}.kafka:9092
+
+#           # Defines the Kafka controllers in the KRaft cluster
+#           # Controller 0 -> kafka-0.kafka:29093
+#           # Controller 1 -> kafka-1.kafka:29093
+#           export KAFKA_CONTROLLER_QUORUM_VOTERS="0@kafka-0.kafka:29093,1@kafka-1.kafka:29093"
+
+#           # Start the Kafka server
+#           # exec replaces the shell process with Kafka
+#           exec /etc/confluent/docker/run
+
+#         env:
+#           # Controller manages Kafka clustor
+#           # Tells Kafka that CONTROLLER is the listener used
+#           # for controller-to-controller communication
+#           - name: KAFKA_CONTROLLER_LISTENER_NAMES
+#             value: "CONTROLLER"
+
+#           # Defines the network addresses and ports on which Kafka listens
+#           #
+#           # 9092  = normal Kafka broker/application communication
+#           # 29093 = Kafka controller communication
+#           #
+#           # 0.0.0.0 means listen on all network interfaces
+#           - name: KAFKA_LISTENERS
+#             value: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:29093
+
+#           # Gets the current Pod's name from Kubernetes
+#           #
+#           # Example:
+#           # kafka-0
+#           # kafka-1
+#           #
+#           # This value is used by KAFKA_ADVERTISED_LISTENERS
+#           - name: POD_NAME
+#             valueFrom:
+#               fieldRef:
+
+#                 # Kubernetes API version used for fieldRef
+#                 apiVersion: v1
+
+#                 # Read the Pod's metadata.name
+#                 fieldPath: metadata.name
+
+#           # Name of the Kafka container
+#           name: kafka
+
+#           # Docker image containing Kafka
+#           image: docker.io/confluentinc/confluent-local:7.5.0
+
+#           # Download the image only if it is not already
+#           # available on the Kubernetes Node
+#           imagePullPolicy: IfNotPresent
+
+#           ports:
+
+#             # Kafka broker/application communication port
+#             - containerPort: 9092
+
+#             # Name given to this container port
+#             # The Service later refers to this port by name
+#             name: tcp-kafka-int
+
+#             # Network protocol used by Kafka
+#             protocol: TCP
+
+#           # Kafka controller communication port
+#           - containerPort: 29093
+
+#             # Name given to the controller port
+#             name: tcp-kafka-ctrl
+
+#             # Network protocol
+#             protocol: TCP
+
+#         resources:
+#           limits:
+
+#             # Maximum CPU the Kafka container can use
+#             # 200m = 0.2 CPU
+#             cpu: "200m"
+
+#             # Maximum memory the Kafka container can use
+#             memory: 1Gi
+
+#           requests:
+
+#             # CPU requested by the Kafka container
+#             # Kubernetes uses this when scheduling the Pod
+#             cpu: 100m
+
+#             # Memory requested by the Kafka container
+#             memory: 512Mi
+
+#         securityContext:
+
+#           # Prevent the container from gaining additional privileges
+#           allowPrivilegeEscalation: false
+
+#           capabilities:
+
+#             # Remove all Linux capabilities from the container
+#             drop:
+#             - ALL
+
+#           # If enabled, the container filesystem would be read-only
+#           # Currently disabled because this line is commented
+#           # readOnlyRootFilesystem: true
+
+#           # Run the Kafka process as Linux user ID 1000
+#           runAsGroup: 1000
+
+#           # Run the Kafka process as Linux user ID 1000
+#           runAsUser: 1000
+
+#         # File used by Kubernetes for the container termination message
+#         terminationMessagePath: /dev/termination-log
+
+#         # Tells Kubernetes to use the termination message
+#         # stored in the file
+#         terminationMessagePolicy: File
+
+#         volumeMounts:
+
+#         # Mount the "config" volume inside the container
+#         # at /etc/kafka
+#         - mountPath: /etc/kafka
+#           name: config
+
+#       # Use Kubernetes internal DNS
+#       dnsPolicy: ClusterFirst
+
+#       # Use Kubernetes' default scheduler
+#       schedulerName: default-scheduler
+
+#       # Security settings applied to the Pod
+#       securityContext:
+
+#         # Give mounted volumes group ID 1000
+#         # so the Kafka process can access them
+#         fsGroup: 1000
+
+#       # Give Kafka up to 30 seconds to shut down gracefully
+#       terminationGracePeriodSeconds: 30
+
+#       volumes:
+
+#       # Creates temporary storage for this Pod
+#       # The volume disappears when the Pod is deleted
+#       - emptyDir: {}
+
+#         # Name of the volume
+#         # This matches volumeMounts.name above
+#         name: config
+
+# ---
+
+# # Kubernetes API version for Service
+# apiVersion: v1
+
+# # Creates a Kubernetes Service
+# kind: Service
+
+# metadata:
+
+#   # Label attached to the Service
+#   labels:
+#     app: kafka
+
+#   # Name of the Service
+#   #
+#   # Other Pods can use:
+#   # kafka:9092
+#   #
+#   # Kubernetes DNS resolves "kafka" to this Service
+#   name: kafka
+
+# spec:
+
+#   # Headless Service
+#   #
+#   # Instead of one normal ClusterIP, Kubernetes provides
+#   # DNS records for the individual StatefulSet Pods
+#   #
+#   # Examples:
+#   # kafka-0.kafka
+#   # kafka-1.kafka
+#   clusterIP: None
+
+#   ports:
+
+#   # Service port for normal Kafka communication
+#   - name: tcp-kafka-int
+
+#     # Port exposed by the Service
+#     port: 9092
+
+#     # Network protocol
+#     protocol: TCP
+
+#     # Forward traffic to the container port named tcp-kafka-int
+#     # which is port 9092
+#     targetPort: tcp-kafka-int
+
+#   # Service port for Kafka controller communication
+#   - name: tcp-kafka-ctrl
+
+#     # Controller Service port
+#     port: 29093
+
+#     # Network protocol
+#     protocol: TCP
+
+#     # Forward traffic to the container port named tcp-kafka-ctrl
+#     # which is port 29093
+#     targetPort: tcp-kafka-ctrl
+
+#   # Service finds Kafka Pods using this label
+#   #
+#   # Kafka Pods have:
+#   #   app: kafka
+#   #
+#   # Therefore this Service selects those Pods
+#   selector:
+#     app: kafka

@@ -1,0 +1,221 @@
+┌──────────────────────────────────────────────────────────────────────────┐
+│                    1. KUBERNETES STARTS POST SERVICE                     │
+│                                                                          │
+│  Kubernetes creates the Post Service Pod from:                           │
+│                                                                          │
+│       k8s/post-service.yml                                               │
+│                                                                          │
+│  Example:                                                                │
+│       image: jakhar0005/connect-sphere-post-service                      │
+│       port: 9010                                                         │
+│                                                                          │
+│  Kubernetes also injects:                                                │
+│       ConfigMap → normal configuration                                   │
+│       Secret    → sensitive configuration                                │
+└────────────────────────────────┬─────────────────────────────────────────┘
+                                 │
+                                 │ Pod starts
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│                    2. SPRING BOOT STARTS                                 │
+│                                                                          │
+│  Post Service reads its LOCAL bootstrap configuration:                   │
+│                                                                          │
+│       PostService/src/main/resources/application.properties              │
+│                                                                          │
+│       spring.application.name=post-service                               │
+│       spring.config.import=optional:configserver:...                     │
+│                                                                          │
+│  This tells Spring:                                                      │
+│                                                                          │
+│       "My application name is post-service."                             │
+│       "I need configuration from Config Server."                         │
+└────────────────────────────────┬─────────────────────────────────────────┘
+                                 │
+                                 │
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│                    3. POST SERVICE CONTACTS CONFIG SERVER                │
+│                                                                          │
+│  Spring sees:                                                            │
+│                                                                          │
+│       spring.config.import=                                              │
+│       configserver:http://config-server:8888                             │
+│                                                                          │
+│  So Post Service sends a request to:                                     │
+│                                                                          │
+│       Config Server :8888                                                │
+│                                                                          │
+│  "Give me configuration for application: post-service"                   │
+└────────────────────────────────┬─────────────────────────────────────────┘
+                                 │
+                                 │ HTTP request
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│                    4. CONFIG SERVER                                      │
+│                         :8888                                            │
+│                                                                          │
+│  Config Server knows where the configuration repository is.              │
+│                                                                          │
+│  Example:                                                                │
+│       GitHub repository                                                  │
+│       connectsphere-config                                               │
+│                                                                          │
+│  Config Server goes to GitHub and gets the configuration.                │
+└────────────────────────────────┬─────────────────────────────────────────┘
+                                 │
+                                 │ reads configuration
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│                    5. GITHUB / CONFIG-REPO                               │
+│                                                                          │
+│       config-repo/                                                       │
+│       │                                                                  │
+│       ├── application.yml       ← COMMON configuration                   │
+│       │                                                                  │
+│       ├── post-service.yml      ← POST SERVICE configuration             │
+│       │                                                                  │
+│       ├── user-service.yml                                               │
+│       ├── connection-service.yml                                         │
+│       └── ...                                                            │
+│                                                                          │
+│  Config Server needs the files relevant to "post-service".               │
+└────────────────────────────────┬─────────────────────────────────────────┘
+                                 │
+                                 │
+                    ┌────────────┴────────────┐
+                    │                         │
+                    ▼                         ▼
+┌──────────────────────────────┐  ┌────────────────────────────────────────┐
+│     application.yml          │  │        post-service.yml                │
+│                              │  │                                        │
+│  COMMON configuration        │  │  POST SERVICE-specific configuration   │
+│                              │  │                                        │
+│  eureka:                     │  │  server:                               │
+│    client:                   │  │    port: 9010                          │
+│      service-url:            │  │                                        │
+│        defaultZone: ...      │  │  servlet:                              │
+│                              │  │    context-path: /post                 │
+│  USER_SERVICE_URI=...        │  │                                        │
+│  POST_SERVICE_URI=...        │  │  spring:                               │
+│  NOTIFICATION_SERVICE_URI=.. │  │    datasource:                         │
+│  CONNECTION_SERVICE_URI=...  │  │      url: jdbc:postgresql://...        │
+│  UPLOADER_SERVICE_URI=...    │  │      username: ${...}                  │
+│                              │  │      password: ${...}                  │
+└──────────────┬───────────────┘  └──────────────────┬─────────────────────┘
+               │                                     │
+               │ COMMON                              │ POST-SERVICE
+               │                                     │ configuration
+               └──────────────────┬──────────────────┘
+                                  │
+                                  ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│                    6. CONFIG SERVER COMBINES CONFIG                      │
+│                                                                          │
+│  Config Server effectively gives Post Service:                           │
+│                                                                          │
+│       application.yml                                                    │
+│              +                                                           │
+│       post-service.yml                                                   │
+│              ↓                                                           │
+│       FINAL POST SERVICE CONFIGURATION                                   │
+│                                                                          │
+│  So Post Service gets BOTH:                                              │
+│                                                                          │
+│       COMMON settings                                                    │
+│       +                                                                  │
+│       Post Service settings                                              │
+└────────────────────────────────┬─────────────────────────────────────────┘
+                                 │
+                                 │ configuration response
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│                    7. POST SERVICE RECEIVES CONFIGURATION                │
+│                                                                          │
+│  Spring now knows things like:                                           │
+│                                                                          │
+│       Port              = 9010                                           │
+│       Context Path     = /post                                           │
+│       Kafka             = ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}          │
+│       DB URL            = ${POSTGRES_DB_SERVER...}                       │
+│       DB Username       = ${POSTGRES_DB_USERNAME...}                     │
+│       DB Password       = ${POSTGRES_DB_PASSWORD...}                     │
+│       JWT Secret        = ${JWT_SECRET}                                  │
+│                                                                          │
+│  BUT some values are still placeholders.                                 │
+└────────────────────────────────┬─────────────────────────────────────────┘
+                                 │
+                                 │ Spring needs actual values
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│                    8. KUBERNETES PROVIDES ENVIRONMENT VALUES             │
+│                                                                          │
+│                    ConfigMap                    Secret                   │
+│                       │                           │                      │
+│                       │                           │                      │
+│                       ▼                           ▼                      │
+│              POSTGRES_DB_SERVER          POSTGRES_DB_PASSWORD            │
+│                    = post-db                  = password                 │
+│                                                                          │
+│              POST_DB_NAME                 JWT_SECRET                     │
+│                    = postDB                    = ******                  │
+│                                                                          │
+│              POSTGRES_DB_USERNAME                                        │
+│                    = user                                                │
+│                                                                          │
+│              KAFKA_BOOTSTRAP_SERVERS                                     │
+│                    = kafka:9092                                          │
+│                                                                          │
+│  These are injected into the Post Service container.                     │
+└────────────────────────────────┬─────────────────────────────────────────┘
+                                 │
+                                 │ Spring resolves ${...}
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│                    9. SPRING RESOLVES THE VALUES                         │
+│                                                                          │
+│  Config Server gave:                                                     │
+│                                                                          │
+│  jdbc:postgresql://${POSTGRES_DB_SERVER:postgres}:                       │
+│                         5432/${POST_DB_NAME:postDB}                      │
+│                                                                          │
+│  Kubernetes gave:                                                        │
+│       POSTGRES_DB_SERVER = post-db                                       │
+│       POST_DB_NAME       = postDB                                        │
+│                                                                          │
+│  Therefore Spring creates:                                               │
+│                                                                          │
+│       jdbc:postgresql://post-db:5432/postDB                              │
+│                                                                          │
+│  And:                                                                    │
+│       username = user                                                    │
+│       password = password                                                │
+└────────────────────────────────┬─────────────────────────────────────────┘
+                                 │
+                                 │
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│                    10. SPRING CREATES DATASOURCE                         │
+│                                                                          │
+│  Spring Boot / HikariCP creates the database connection pool.            │
+│                                                                          │
+│       Host       = post-db                                               │
+│       Port       = 5432                                                  │
+│       Database   = postDB                                                │
+│       Username   = user                                                  │
+│       Password   = password                                              │
+│                                                                          │
+│  Post Service is now ready to communicate with PostgreSQL.               │
+└────────────────────────────────┬─────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│                    11. POST SERVICE BECOMES READY                        │
+│                                                                          │
+│  Spring Boot finishes startup.                                           │
+│                                                                          │
+│       Post Service                                                       │
+│          :9010                                                           │
+│                                                                          │
+│  It is now ready to receive user requests.                               │
+└──────────────────────────────────────────────────────────────────────────┘

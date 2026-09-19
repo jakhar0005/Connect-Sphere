@@ -1,13 +1,16 @@
 package com.connectSphere.postService.controller;
 
 import com.connectSphere.postService.auth.AuthContextHolder;
-import com.connectSphere.postService.dto.CreatePostResponseDto;
 import com.connectSphere.postService.dto.CreatePostRequestDto;
+import com.connectSphere.postService.dto.CreatePostResponseDto;
 import com.connectSphere.postService.service.PostService;
-import jakarta.servlet.http.HttpServlet;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -23,16 +26,18 @@ public class PostController {
     /**
      * Handles the creation of a new post.
      *
-     * @param request The request body containing the details of the post to be
-     * created.
-     *
      * @return ResponseEntity containing the response DTO with the details of the
      * created post.
      */
-    @PostMapping
-    public ResponseEntity<CreatePostResponseDto> createPost(@RequestBody final CreatePostRequestDto request) {
-        final var response = postService.createPost(request, AuthContextHolder.getCurrentUserId());
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<CreatePostResponseDto> createPost(
+        @RequestPart("post") final String postJson,
+        @RequestPart(value = "file", required = false) final MultipartFile file) throws JsonProcessingException {
 
+        ObjectMapper objectMapper = new ObjectMapper();
+        CreatePostRequestDto request = objectMapper.readValue(postJson, CreatePostRequestDto.class);
+
+        final var response = postService.createPost(request, AuthContextHolder.getCurrentUserId(), file);
         return ResponseEntity.ok(response);
     }
 

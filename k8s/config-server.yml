@@ -1,0 +1,82 @@
+# ============================================================
+# CONFIG SERVER DEPLOYMENT
+# use command in command line kubectl apply -f notification-db.yml
+# so pod will be created for notification-db named notification-db-0
+# Every time you made changes to config-repo restart the config-server in 
+# gke using command kubectl rollout restart deployment/config-server
+# and also restart all the services using same command ex- kubectl rollout restart deployment/user-service
+# ============================================================
+
+# Kubernetes API version
+apiVersion: apps/v1
+
+kind: Deployment
+
+metadata:
+  # Name of the Deployment
+  name: config-server
+
+spec:
+  # Number of Config Server Pods
+  replicas: 1
+
+  # Deployment manages Pods having this label
+  selector:
+    matchLabels:
+      app: config-server
+
+  # Pod template
+  template:
+    metadata:
+      labels:
+        app: config-server
+
+    spec:
+      containers:
+
+        # Config Server container
+        - name: config-server
+
+          image: jakhar0005/connect-sphere-config-server
+
+          # Config Server listens on 8888
+          ports:
+            - containerPort: 8888
+
+          # Resource limits
+          resources:
+            limits:
+              memory: "400Mi"
+              cpu: "200m"
+
+            requests:
+              memory: "200Mi"
+              cpu: "100m"
+
+
+---
+# ============================================================
+# CONFIG SERVER SERVICE
+# ============================================================
+
+# Kubernetes API version for Service
+apiVersion: v1
+
+# We are creating a Service
+kind: Service
+
+metadata:
+  name: config-server
+
+spec:
+
+  # Find the Config Server Pod
+  selector:
+    app: config-server
+
+  # Expose Config Server on port 8888
+  ports:
+    - port: 8888
+
+      # Forward to Config Server container port
+      targetPort: 8888

@@ -1,6 +1,7 @@
 package com.connectSphere.postService.service;
 
 import com.connectSphere.postService.client.ConnectionServiceClient;
+import com.connectSphere.postService.client.UploaderServiceClient;
 import com.connectSphere.postService.dto.CreatePostResponseDto;
 import com.connectSphere.postService.dto.CreatePostRequestDto;
 import com.connectSphere.postService.entity.Post;
@@ -12,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -28,7 +30,9 @@ public class PostService {
 
     private final PostRepository postRepository;
 
-    private final ConnectionServiceClient serviceClient;
+    private final ConnectionServiceClient connectionServiceClient;
+
+    private final UploaderServiceClient uploaderServiceClient;
 
     /**
      * Creates a new post based on the provided request data.
@@ -38,16 +42,21 @@ public class PostService {
      * @return A response DTO containing the details of the created post.
      */
     public CreatePostResponseDto createPost(final CreatePostRequestDto request
-                                           , final Long userId) {
+                                           , final Long userId
+                                           , final MultipartFile file) {
         log.info("Creating post for user with id: {}", userId);
+
+        final var imageURL = uploaderServiceClient.upload(file);
 
         var post = mapper.map(request, Post.class);
 
         post.setUserId(userId);
+        post.setImageURL(imageURL.getBody());
 
         post = postRepository.save(post);
 
-        final var connections = serviceClient.getFirstDegreeConnections(userId);
+        final var connections = connectionServiceClient.getFirstDegreeConnections(userId);
+
 
         for(final var connection : connections) {
             final var createdPost = PostCreated.builder()

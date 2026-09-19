@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service
+
+spec:
+  selector:
+    matchLabels:
+      app: user-service
+
+  template:
+    metadata:
+      labels:
+        app: user-service
+
+    spec:
+      containers:
+      - name: user-service
+        image: jakhar0005/connect-sphere-user-service
+
+        resources:
+          limits:
+            memory: "400Mi"
+            cpu: "200m"
+
+          requests:
+            memory: "200Mi"
+            cpu: "100m"
+
+        env:
+          - name: SPRING_PROFILES_ACTIVE
+            valueFrom:
+              configMapKeyRef:
+                name: connectsphere-config
+                key: SPRING_PROFILES_ACTIVE
+
+          - name: POSTGRES_DB_USERNAME
+            valueFrom:
+              configMapKeyRef:
+                name: connectsphere-config
+                key: POSTGRES_DB_USERNAME
+
+          - name: POSTGRES_DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: connectsphere-secret
+                key: POSTGRES_DB_PASSWORD
+
+          - name: POSTGRES_DB_SERVER
+            valueFrom:
+              configMapKeyRef:
+                name: connectsphere-config
+                key: USER_DB_SERVER
+
+          - name: USER_DB_NAME
+            valueFrom:
+              configMapKeyRef:
+                name: connectsphere-config
+                key: USER_DB_NAME
+
+          - name: JWT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: connectsphere-secret
+                key: JWT_SECRET
+
+          - name: KAFKA_BOOTSTRAP_SERVERS
+            valueFrom:
+              configMapKeyRef:
+                name: connectsphere-config
+                key: KAFKA_BOOTSTRAP_SERVERS
+
+        ports:
+        - containerPort: 9020
+
+---
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: user-service
+
+spec:
+  selector:
+    app: user-service
+
+  ports:
+  - port: 80
+    targetPort: 9020

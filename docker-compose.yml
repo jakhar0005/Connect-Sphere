@@ -9,7 +9,7 @@ services:
     # Build the Docker image from the discoverService folder
     # Port 8761 on your PC -> Port 8761 inside the container
     discover-service:
-        build: ./discoverService
+        image: docker.io/jakhar0005/connect-sphere-discover-service:0.0.1-SNAPSHOT
         ports:
             - "8761:8761"
         healthcheck:
@@ -154,12 +154,22 @@ services:
         depends_on:
             - kafka
 
+    config-server:
+        # Build Config Server
+        image: docker.io/jakhar0005/connect-sphere-config-server:0.0.1-SNAPSHOT
+
+        ports:
+            # Windows 8888 -> Config Server 8888
+            - "8888:8888"
+
     # User Service
     # Build the Docker image from the userService folder
     # User Service needs Eureka, PostgreSQL and Kafka
     user-service:
-        build: ./userService
+        image: docker.io/jakhar0005/connect-sphere-user-service:0.0.1-SNAPSHOT
         depends_on:
+            config-server:
+                condition: service_started
             discover-service:
                 condition: service_healthy
 
@@ -174,8 +184,10 @@ services:
     # Build the Docker image from the postService folder
     # Post Service needs Eureka, PostgreSQL and Kafka
     post-service:
-        build: ./postService
+        image: docker.io/jakhar0005/connect-sphere-post-service:0.0.1-SNAPSHOT
         depends_on:
+            config-server:
+                condition: service_started
             discover-service:
                 condition: service_healthy
 
@@ -190,12 +202,14 @@ services:
     # Build the Docker image from the connectionService folder
     # Connection Service needs Eureka, Neo4j and Kafka
     connection-service:
-        build: ./connectionService
+        image: docker.io/jakhar0005/connect-sphere-connection-service:0.0.1-SNAPSHOT
         depends_on:
+            config-server:
+                condition: service_started
             discover-service:
                 condition: service_healthy
 
-            postgres:
+            neo4j:
                 condition: service_started
 
             kafka:
@@ -206,8 +220,10 @@ services:
     # Build the Docker image from the notificationService folder
     # Notification Service needs Eureka, PostgreSQL and Kafka
     notification-service:
-        build: ./notificationService
+        image: docker.io/jakhar0005/connect-sphere-notification-service:0.0.1-SNAPSHOT
         depends_on:
+            config-server:
+                condition: service_started
             discover-service:
                 condition: service_healthy
 
@@ -222,8 +238,15 @@ services:
     # Build the Docker image from the uploaderService folder
     # Uploader Service uses Eureka
     uploader-service:
-        build: ./uploaderService
+        image: docker.io/jakhar0005/connect-sphere-uploader-service:0.0.1-SNAPSHOT
+        environment:
+            # Cloudinary credentials
+            CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+            CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+            CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
         depends_on:
+            config-server:
+                condition: service_started
             discover-service:
                 condition: service_healthy
 
@@ -232,7 +255,7 @@ services:
     # Build the Docker image from the APIGateway folder
     # API Gateway uses Eureka to find other services
     api-gateway:
-        build: ./APIGateway
+        image: docker.io/jakhar0005/connect-sphere-api-gateway:0.0.1-SNAPSHOT
 
         # Make API Gateway available from your PC
         # localhost:9040 -> container:9040
@@ -240,6 +263,8 @@ services:
             - "9040:9040"
 
         depends_on:
+            config-server:
+                condition: service_started
             discover-service:
                 condition: service_healthy
 

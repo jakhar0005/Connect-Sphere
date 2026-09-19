@@ -1,41 +1,9 @@
-spring.application.name: api-gateway
-
-server.port: 9040
-eureka.client.service-url.defaultZone: http://localhost:8761/eureka/
-
-jwt.secretKey: kjlfhbvfskjbgvslkdnvvhsafcdghvcjbfvhgsvc873465tgyfdghvbjkf
-
 spring:
-    cloud:
-        gateway:
-            server:
-                webflux:
-                    routes:
-                        -   id: user-service
-                            uri: lb://USER-SERVICE
-                            predicates:
-                                # v1/v2 are API versions used to support changes in an API
-                                # without breaking clients that still use the older version.
-                                # Example:
-                                # v1 may return { "name": "AARKJ" }
-                                # while v2 may return { "firstName": "AARK", "lastName": "J" }.
-                                # Existing clients continue using v1, while new clients use v2.
-                                - Path=/api/v1/user/**
-                            filters:
-                                - StripPrefix=2
+    application:
+        # Application name used to find api-gateway.yml
+        name: api-gateway
 
-                        -   id: post-service
-                            uri: lb://POST-SERVICE
-                            predicates:
-                                - Path=/api/v1/post/**
-                            filters:
-                                - StripPrefix=2
-                                - name: AuthenticationFilter
+    config:
+        # Connect to Config Server container
+        import: configserver:http://config-server:8888
 
-                        -   id: connection-service
-                            uri: lb://CONNECTION-SERVICE
-                            predicates:
-                                - Path=/api/v1/connection/**
-                            filters:
-                                - StripPrefix=2
-                                - name: AuthenticationFilter

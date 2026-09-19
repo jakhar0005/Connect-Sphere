@@ -11,7 +11,7 @@
     <groupId>com.connectSphere</groupId>
     <artifactId>postService</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name/>
+    <name>post-service</name>
     <description/>
     <url/>
     <licenses>
@@ -85,6 +85,10 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-config</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
         </dependency>
     </dependencies>
@@ -139,6 +143,28 @@
                                 </path>
                             </annotationProcessorPaths>
                         </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>com.google.cloud.tools</groupId>
+                <artifactId>jib-maven-plugin</artifactId>
+                <version>3.4.4</version>
+                <configuration>
+                    <to>
+                        <!-- to run this go to directory cd APIGateway then run ./mvnw clean package -DskipTests-->
+                        <image>docker.io/jakhar0005/connect-sphere-${project.name}:${project.version}</image>
+                        <tags>
+                            <tag>latest</tag>
+                        </tags>
+                    </to>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>build</goal>
+                        </goals>
                     </execution>
                 </executions>
             </plugin>

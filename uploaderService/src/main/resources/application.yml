@@ -1,40 +1,25 @@
 spring.application.name: uploader-service
 
-server.port: 9070
-server.servlet.context-path: /upload
+spring:
+    config:
+        import: configserver:http://config-server:8888
 
-eureka.client.service-url.defaultZone: http://discover-service:8761/eureka
-
-#To connect with cloudnary create account then go to get started click on All SDKs
-# copy java dependency in your pom file.
-# Then go to dashboard create api keys put it here in this file.
-#Create config of cloudnary put the details in them see in config folder.
-cloudinary:
-    cloud-name: ukhwbiwm
-    api-key: 686688166295963
-    api-secret: aFDSY9ZZ974gO0sjasypRPN7hWU
+    #To connect with cloudnary create account then go to get started click on All SDKs
+    # copy java dependency in your pom file.
+    # Then go to dashboard create api keys put it here in this file.
+    #Create config of cloudnary put the details in them see in config folder.
 
 
-# To connect with google cloud create account. Create bucket. Then add permission
-# make it public to all users by going to permission tab grant access write allusers
-# then select role -> clous storage -> storage object viewer.
+    # To connect with google cloud create account. Create bucket. Then add permission
+    # make it public to all users by going to permission tab grant access write allusers
+    # then select role -> clous storage -> storage object viewer.
 
-# Now connect to bucket go to IAM -> service account -> create account -> select storage = cloud storage -> Storage object admin -> Done
-# Now created account click on 3 dots -> manage keys -> add key -> create new keys -> JSON -> create -> keys will be downloaded. and add those here the keys.
-# Also add google cloud storage maven dependency
-gcloud:
-    storage-bucket-name:  connectsphere-media-dev
-    storage-access-key: >
-      {
-          "type": "service_account",
-          "project_id": "project-a4492119-9520-4561-a30",
-          "private_key_id": "4acaef225ebd8fcaecb0ec0a65e3b6638c67588f",
-          "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC8G8jaZi7F+pHr\nrYRT2Iji3RsspEvEYtFjMxwxkd1y2rSxxh8EBYa1UrtwdchPCFhl8Am1NKzypuGG\ncLXkuNvrC327wKW7FcXc2AJ4y1ktPcS/J5bI4v4aqwBm1xSLo/0yOpe9VQvYOCoT\nprHyB7Radw3Gcv48XsR1yxfroxCPMlOcE6m4pbUWQU7hN4NXOEu9ylODxFYcDoQM\nxU2ZGobBj7VdPF8jDf+F0Eoyfhe3dX1pZpXqd7kVfarRsYl9UjchQt32P6XS6wnv\nlKGDreeHSyYsi5gqYr0VUusv7Gh69eoINOjRf2P2NuyfsfO+nvzZuGn2arhu0WfB\nMUHBcHG9AgMBAAECggEAA4/t+oJ/PKCBNNxTKLG+ZoHZCgYyyuhOXm27Uz1Nnp03\nZqA67/mV3lgTFK1bzTsikaB2nwVbo0w0Go416esN9Mj7AKZLRZWGk0+RQ8jQxyr/\nXNmPDMhDP62QHv1kSmVrOOIZ9jX+ONLsTRBIaRMTEO4jByUStMTccxjRn9tyHzpf\nktNwYnApmXtF2KZxSJHwUqqNk9OjI0B0k0L+2T805wwfLw0UaI34GUDcxWcxtSka\nmNLMDPcd9G5pKVtXbmAAm8AjHlwWN+jpOyid688HKggyZc1mjzn/TRlgVfs6V21D\ng6ha3+ltAwyhYatyyZezi/xmSNjbDxTHYOCNvd9NKwKBgQDc/6qKf8+1oi+/3FIb\nR0WVbzw+8leJDFqhDpmTBx7sOvW/YZrFguVIRLqVywRWfpiYsLD4fG7L7l9CXam7\noQRaeSaGhSmTRMjwThT9Mtz+xJAwhfE1PEOiKyevBxeTy3+V7giPKPp66FENVYoH\n7oipczpqIvo6bn+lYvotLKG8pwKBgQDZ5phvLYTuOiNLq75G/xdQoCfhx4Qr4It8\n07wXUixyzG+P8LWpB8P2tohAUkTxSrIHKuy0ab04IjTy0qu2/YGGkp/AyEUTV87e\nDXx85oadCRprGemtf5oq+ofp18UBj6RcbzpOEBe4po2qyo1QDt3nP3w5CCgM4+oY\nGKDsHkz2+wKBgFFnKx5Q7eVtlEELmoLJwevFSV+2TGAC2O8yPYdWvCEvpo2UGjpe\neK4iAshiO3rQrsyvaMBetUEQ0K3Vakveh4f70CEEs8e3MnyxhjGtppGBPcthyvNc\n+1ykoL1r01dxQdGsGCMDaSAUqqZKt8ksJ9KiywWFVL5pLUNyLcyt//VJAoGAKYLB\nhWSRj2Sp9q94J0RPZ7+q+Vst9cHoMNaRXYv9Bb2mfzBnGxVsoqJxYHeLxL/rHGxz\n/YarUndJyPyTU+AFfeKO5oYAisfOlATTs2OjP2VNkBu2paPKdeeWXtkJIdwAfs99\ntwNf0YCBOokt1JOQeI5ilubT4mjE3uRKO9El7mMCgYEAnqexGPhhCCPPGzMQlaGK\nneTHEJjUf6BIkN3eDaMAmFytQXd/x91M4mwx5MG/2NhxIGMxQbzMEY5Oio82dsci\nXq2BbrT3EYJSeiYn442jXAesJOtOsyZJfixTdWTD3dseACHENIMREabxcXayKsdO\nKPmHzBcMxfJKJEtaeyIxUeQ=\n-----END PRIVATE KEY-----\n",
-          "client_email": "connect-sphere@project-a4492119-9520-4561-a30.iam.gserviceaccount.com",
-          "client_id": "106778417355364896512",
-          "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-          "token_uri": "https://oauth2.googleapis.com/token",
-          "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-          "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/connect-sphere%40project-a4492119-9520-4561-a30.iam.gserviceaccount.com",
-          "universe_domain": "googleapis.com"
-      }
+    # Now connect to bucket go to IAM -> service account -> create account -> select storage = cloud storage -> Storage object admin -> Done
+    # Now created account click on 3 dots -> manage keys -> add key -> create new keys -> JSON -> create -> keys will be downloaded. and add those here the keys.
+    # Also add google cloud storage maven dependency
+#    gcloud:
+#        storage-bucket-name: connectsphere-media-dev
+#        storage-access-key: >
+#            {
+
+#            }

@@ -1,0 +1,112 @@
+# ============================================================
+# API GATEWAY DEPLOYMENT
+# ============================================================
+
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: api-gateway
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: api-gateway
+
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+
+    spec:
+      containers:
+        - name: api-gateway
+
+          image: jakhar0005/connect-sphere-api-gateway
+
+          resources:
+            limits:
+              memory: "400Mi"
+              cpu: "200m"
+
+            requests:
+              memory: "200Mi"
+              cpu: "100m"
+
+          env:
+
+            # Spring profile
+            - name: SPRING_PROFILES_ACTIVE
+              valueFrom:
+                configMapKeyRef:
+                  name: connectsphere-config
+                  key: SPRING_PROFILES_ACTIVE
+
+            # User Service
+            - name: USER_SERVICE_URI
+              valueFrom:
+                configMapKeyRef:
+                  name: connectsphere-config
+                  key: USER_SERVICE_URI
+
+            # Post Service
+            - name: POST_SERVICE_URI
+              valueFrom:
+                configMapKeyRef:
+                  name: connectsphere-config
+                  key: POST_SERVICE_URI
+
+            # Notification Service
+            - name: NOTIFICATION_SERVICE_URI
+              valueFrom:
+                configMapKeyRef:
+                  name: connectsphere-config
+                  key: NOTIFICATION_SERVICE_URI
+
+            # Connection Service
+            - name: CONNECTION_SERVICE_URI
+              valueFrom:
+                configMapKeyRef:
+                  name: connectsphere-config
+                  key: CONNECTION_SERVICE_URI
+
+            # Uploader Service
+            - name: UPLOADER_SERVICE_URI
+              valueFrom:
+                configMapKeyRef:
+                  name: connectsphere-config
+                  key: UPLOADER_SERVICE_URI
+
+            # JWT secret used by AuthenticationFilter / JwtService
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: connectsphere-secret
+                  key: JWT_SECRET
+
+          ports:
+            - containerPort: 9040
+
+---
+
+# ============================================================
+# API GATEWAY SERVICE
+# ============================================================
+
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: api-gateway
+
+spec:
+  type: LoadBalancer
+
+  selector:
+    app: api-gateway
+
+  ports:
+    - port: 80
+      targetPort: 9040

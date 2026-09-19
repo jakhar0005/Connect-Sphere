@@ -9,11 +9,11 @@ public class KafkaConfig {
 
     @Bean
     public NewTopic postCreated() {
-        return new NewTopic("post-created", 3, (short) 1);
+        return new NewTopic("post-created", 1, (short) 1);
     }
 
     @Bean
     public NewTopic postLiked() {
-        return new NewTopic("post-liked", 3, (short) 1);
+        return new NewTopic("post-liked", 1, (short) 1);
     }
 }

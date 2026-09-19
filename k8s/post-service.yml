@@ -1,0 +1,390 @@
+# ============================================================
+# PART 1: DEPLOYMENT
+# ============================================================
+
+# Kubernetes API version for Deployment
+apiVersion: apps/v1
+
+# We are creating a Deployment
+kind: Deployment
+
+metadata:
+
+  # Name of this Deployment
+  # This Deployment manages the Post Service Pods
+  name: post-service
+
+
+spec:
+
+  # This tells the Deployment which Pods it manages.
+  #
+  # It looks for Pods with:
+  #     app: post-service
+  #
+  # This must match the label inside template.metadata.labels
+  selector:
+    matchLabels:
+      app: post-service
+
+
+  # ==========================================================
+  # POD TEMPLATE
+  # ==========================================================
+  #
+  # This is the blueprint for the Pod that the Deployment creates.
+
+  template:
+
+    metadata:
+
+      # Label attached to the Pod.
+      #
+      # The Deployment selector above:
+      #     app: post-service
+      #
+      # matches this label:
+      #     app: post-service
+      #
+      # So the Deployment knows:
+      # "This is my Pod."
+      labels:
+        app: post-service
+
+
+    spec:
+
+      # Containers that will run inside the Pod
+      containers:
+
+      # Name of the container
+      - name: post-service
+
+        # Docker image containing your Spring Boot application
+        #
+        # Kubernetes will create a container from this image.
+        image: jakhar0005/connect-sphere-post-service
+
+
+        # ====================================================
+        # CPU AND MEMORY
+        # ====================================================
+
+        resources:
+
+          # Maximum resources the container can use
+          limits:
+
+            # Maximum memory = 400 MiB
+            memory: "400Mi"
+
+            # Maximum CPU = 0.2 CPU
+            # 1000m = 1 CPU
+            # 200m = 0.2 CPU
+            cpu: "200m"
+
+
+          # Resources Kubernetes requests/reserves
+          # when deciding where to schedule the Pod
+          requests:
+
+            # Request 200 MiB memory
+            memory: "200Mi"
+
+            # Request 0.1 CPU
+            cpu: "100m"
+
+
+        # ====================================================
+        # ENVIRONMENT VARIABLES
+        # ====================================================
+        #
+        # These values are passed to your Spring Boot
+        # application inside the container.
+
+        env:
+
+          # Tell Spring Boot to use the "k8s" profile.
+          #
+          # Spring Boot will therefore load configuration
+          # for the k8s profile.
+          - name: SPRING_PROFILES_ACTIVE
+            valueFrom:
+              configMapKeyRef:
+                name: connectsphere-config
+                key: SPRING_PROFILES_ACTIVE
+
+
+          # PostgreSQL username
+          #
+          # This must match the username configured
+          # in your PostgreSQL StatefulSet.
+          - name: POSTGRES_DB_USERNAME
+            valueFrom:
+              configMapKeyRef:
+                name: connectsphere-config
+                key: POSTGRES_DB_USERNAME
+
+
+
+          # PostgreSQL password
+          #
+          # This must match the password configured
+          # in your PostgreSQL StatefulSet.
+          - name: POSTGRES_DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: connectsphere-secret
+                key: POSTGRES_DB_PASSWORD
+
+
+          # PostgreSQL SERVER/HOST
+          #
+          # "post-db" is the NAME OF THE POSTGRESQL SERVICE.
+          #
+          # Spring Boot will use this name to find PostgreSQL
+          # through Kubernetes DNS.
+          #
+          # It is NOT the StatefulSet name that creates
+          # the connection.
+          #
+          # The connection is:
+          #
+          # Spring Boot
+          #      ↓
+          # post-db:5432
+          #      ↓
+          # post-db Service
+          #      ↓
+          # PostgreSQL Pod
+          - name: POSTGRES_DB_SERVER
+            valueFrom:
+              configMapKeyRef:
+                name: connectsphere-config
+                key: POST_DB_SERVER
+
+
+          # Database name that Spring Boot should connect to.
+          #
+          # This must match the database name created
+          # by PostgreSQL.
+          - name: POST_DB_NAME
+            valueFrom:
+              configMapKeyRef:
+                name: connectsphere-config
+                key: POST_DB_NAME
+
+          # JWT secret key used by the application to create
+          # and validate JWT tokens.
+          #
+          # The actual secret value is stored in the Kubernetes
+          # Secret named "connectsphere-secret".
+          #
+          # Kubernetes reads the value using the key:
+          #     JWT_SECRET
+          #
+          # The value is then injected into the Spring Boot
+          # container as the environment variable:
+          #     JWT_SECRET
+          #
+          # Flow:
+          #
+          # Kubernetes Secret
+          #       ↓
+          # connectsphere-secret
+          #       ↓
+          # JWT_SECRET
+          #       ↓
+          # Spring Boot environment variable
+          #       ↓
+          # JWT authentication
+          - name: JWT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: connectsphere-secret
+                key: JWT_SECRET
+
+          # Address of the Kafka broker that the Spring Boot
+          # application uses to connect to Kafka.
+          #
+          # The value is stored in the ConfigMap named
+          # "connectsphere-config".
+          #
+          # Kubernetes reads the value using the key:
+          #     KAFKA_BOOTSTRAP_SERVERS
+          #
+          # The value is then injected into the Spring Boot
+          # container as the environment variable:
+          #     KAFKA_BOOTSTRAP_SERVERS
+          #
+          # Example value:
+          #     kafka:9092
+          #
+          # Flow:
+          #
+          # ConfigMap
+          #       ↓
+          # connectsphere-config
+          #       ↓
+          # KAFKA_BOOTSTRAP_SERVERS
+          #       ↓
+          # Spring Boot environment variable
+          #       ↓
+          # Kafka broker
+          - name: KAFKA_BOOTSTRAP_SERVERS
+            valueFrom:
+              configMapKeyRef:
+                name: connectsphere-config
+                key: KAFKA_BOOTSTRAP_SERVERS
+
+        # Port on which the Spring Boot application
+        # listens INSIDE the container.
+        ports:
+
+        - containerPort: 9010
+
+
+# ============================================================
+# PART 2: SERVICE
+# ============================================================
+
+# "---" means:
+# "The previous Kubernetes resource is finished.
+#  Start defining a new resource."
+
+---
+
+# Kubernetes API version for Service
+apiVersion: v1
+
+# We are creating a Service
+kind: Service
+
+metadata:
+
+  # Name of the Service
+  #
+  # Other applications inside Kubernetes can use:
+  #
+  #     post-service
+  #
+  # to reach this application.
+  name: post-service
+
+
+spec:
+
+  # ==========================================================
+  # FIND THE POST POD
+  # ==========================================================
+  #
+  # The Service looks for Pods having:
+  #
+  #     app: post-service
+  #
+  # Our Pod has:
+  #
+  #     app: post-service
+  #
+  # Therefore they MATCH.
+  selector:
+    app: post-service
+
+
+  # ==========================================================
+  # PORTS
+  # ==========================================================
+
+  ports:
+
+  # Port exposed by the Service
+  #
+  # Other applications can call:
+  #
+  #     post-service:80
+  #
+  - port: 80
+
+    # The Service forwards the request to port 9010
+    # inside the Post Pod.
+    targetPort: 9010
+
+
+
+
+# Deployment
+#     │
+#     │  # Deployment creates and manages the Pod
+#     ↓
+# Posts Pod
+#     │
+#     │  # Pod has the label:
+#     │  # app: post-service
+#     │
+#     │  # Inside this Pod is your Spring Boot container
+#     ↓
+# Spring Boot Application
+#     │
+#     │  # Spring Boot is listening on port 9010
+#     │  # This is the container's application port
+#     │
+#     |
+#     │  # Service sends traffic to the Pod's port 9010
+#     │  # because targetPort is 9010
+
+
+
+# posts-service
+# Service
+#     │
+#     │  # Service finds the Pod using:
+#     │  # selector:
+#     │  #   app: post-service
+#     │
+#     │  # Service exposes port 80
+#     │  # So another application can call:
+#     │  # posts-service:80
+#     ↓
+# posts-service:80
+#     │
+#     │  # Request enters the Service on port 80
+#     │  # Service forwards that request to:
+#     │  # Pod :9010
+#     ↓
+# Posts Pod :9010
+#     │
+#     │  # Port 9010 belongs to the container
+#     │  # where Spring Boot is running
+#     ↓
+# Spring Boot Application
+
+
+
+        #                  POSTS APPLICATION
+                              
+        #                 Deployment
+        #                     │
+        #                     │ creates
+        #                     ↓
+        #                Posts Pod
+        #                     │
+        #                     │ contains
+        #                     ↓
+        #             Spring Boot :9010
+        #                /          \
+        #               /            \
+        #              /              \
+        #             ↓                ↓
+        #   posts-service           post-db
+        #      Service              Service
+        #         │                    │
+        #         │                    │
+        #         │                    │
+        #  Other application       PostgreSQL
+        #  can call this           connection
+        #                             │
+        #                             ↓
+        #                       PostgreSQL Pod
+        #                             │
+        #                             ↓
+        #                         PostgreSQL

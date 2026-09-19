@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: connectsphere-config
+
+data:
+
+  # Common
+  SPRING_PROFILES_ACTIVE: "k8s"
+  KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+
+  # PostgreSQL
+  POSTGRES_DB_USERNAME: "user"
+
+  USER_DB_SERVER: "user-db"
+  USER_DB_NAME: "userDB"
+
+  POST_DB_SERVER: "post-db"
+  POST_DB_NAME: "postDB"
+
+  NOTIFICATION_DB_SERVER: "notification-db"
+  NOTIFICATION_DB_NAME: "notificationDB"
+
+  # Neo4j
+  CONNECTION_DB_NAME: "connection-db"
+  NEO4J_USERNAME: "neo4j"
+
+  # Cloudinary
+  CLOUDINARY_CLOUD_NAME: "ukhwbiwm"
+
+  # GCloud
+  GCLOUD_STORAGE_BUCKET_NAME: "connectsphere-media-dev"
+
+  # API Gateway service URLs
+  USER_SERVICE_URI: "http://user-service"
+  POST_SERVICE_URI: "http://post-service"
+  NOTIFICATION_SERVICE_URI: "http://notification-service"
+  CONNECTION_SERVICE_URI: "http://connection-service"
+  UPLOADER_SERVICE_URI: "http://uploader-service"

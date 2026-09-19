@@ -1,0 +1,239 @@
+# ============================================================
+# PART 1: CREATE NEO4J DATABASE USING STATEFULSET
+# ============================================================
+
+apiVersion: apps/v1
+
+# StatefulSet is used because Neo4j is a database.
+# Database needs stable identity and persistent storage.
+kind: StatefulSet
+
+metadata:
+  # Name of the StatefulSet
+  name: connection-db
+
+spec:
+
+  # Kubernetes uses this label to identify the Pods
+  # managed by this StatefulSet.
+  selector:
+    matchLabels:
+      app: connection-db
+
+  # Name of the Service associated with this StatefulSet.
+  # It gives the Neo4j Pod a stable network identity.
+  serviceName: connection-db
+
+  # We want only ONE Neo4j Pod.
+  replicas: 1
+
+  # ----------------------------------------------------------
+  # POD TEMPLATE
+  # ----------------------------------------------------------
+  # This is the blueprint Kubernetes uses to create the Pod.
+
+  template:
+
+    metadata:
+      # Label given to the Pod.
+      # Service uses this label to find the Pod.
+      labels:
+        app: connection-db
+
+    spec:
+
+      containers:
+
+      # Create a container inside the Pod.
+      - name: connection-db
+
+        # Use Neo4j version 4.4.39 Community Edition image.
+        image: neo4j:4.4.39-community
+
+        # ----------------------------------------------------
+        # CPU AND MEMORY
+        # ----------------------------------------------------
+
+        resources:
+
+          limits:
+
+            # Maximum CPU this container can use.
+            # 200m = 0.2 CPU
+            cpu: "200m"
+
+            # Maximum memory = 4 GiB
+            memory: 4Gi
+
+          requests:
+
+            # Kubernetes asks the Node to reserve
+            # at least 100m CPU for this container.
+            cpu: 100m
+
+            # Kubernetes asks the Node to reserve
+            # at least 600Mi memory.
+            memory: 600Mi
+
+        # ----------------------------------------------------
+        # NEO4J PORT
+        # ----------------------------------------------------
+
+        ports:
+
+          # Neo4j protocol listens on port 7687.
+          # This tells Kubernetes that the container uses 7687.
+          - containerPort: 7687
+
+        # ----------------------------------------------------
+        # ENVIRONMENT VARIABLES
+        # ----------------------------------------------------
+
+        env:
+          - name: NEO4J_USERNAME
+            valueFrom:
+              configMapKeyRef:
+                name: connectsphere-config
+                key: NEO4J_USERNAME
+
+          - name: NEO4J_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: connectsphere-secret
+                key: NEO4J_PASSWORD
+
+          # Neo4j username = neo4j
+          # Neo4j password = user@1234
+          #
+          # So login becomes:
+          # username: neo4j
+          # password: user@1234
+          - name: NEO4J_AUTH
+            value: "$(NEO4J_USERNAME)/$(NEO4J_PASSWORD)"
+
+          # Initial Neo4j JVM heap memory = 512 MB
+          - name: NEO4J_dbms_memory_heap_initial__size
+            value: "512M"
+
+          # Maximum Neo4j JVM heap memory = 2 GB
+          - name: NEO4J_dbms_memory_heap_max__size
+            value: "2G"
+
+          # Neo4j listens on all network interfaces.
+          #
+          # 0.0.0.0 means:
+          # "Accept connections coming to this container
+          # from the Kubernetes network."
+          - name: NEO4J_dbms_default__listen__address
+            value: "0.0.0.0"
+
+          # Accept Neo4j license agreement.
+          - name: NEO4J_ACCEPT_LICENSE_AGREEMENT
+            value: "yes"
+
+        # ----------------------------------------------------
+        # STORAGE INSIDE THE CONTAINER
+        # ----------------------------------------------------
+
+        volumeMounts:
+
+          # Mount the persistent Neo4j DATA storage
+          # at /data inside the container.
+          #
+          # Neo4j database files will be stored here.
+          - name: neo4j-data
+            mountPath: /data
+
+          # Mount persistent storage for Neo4j LOGS
+          # at /logs inside the container.
+          - name: neo4j-logs
+            mountPath: /logs
+
+
+  # ==========================================================
+  # PERSISTENT STORAGE FOR NEO4J DATA
+  # ==========================================================
+
+  volumeClaimTemplates:
+
+    # Kubernetes creates a PVC for Neo4j data.
+    - metadata:
+        name: neo4j-data
+
+      spec:
+
+        # Only one Pod can mount this storage for writing.
+        accessModes: ["ReadWriteOnce"]
+
+        resources:
+          requests:
+
+            # Request 2 GB of persistent storage.
+            storage: 2Gi
+
+
+    # ========================================================
+    # PERSISTENT STORAGE FOR NEO4J LOGS
+    # ========================================================
+
+    - metadata:
+        name: neo4j-logs
+
+      spec:
+
+        # Only one Pod can mount this storage for writing.
+        accessModes: ["ReadWriteOnce"]
+
+        resources:
+          requests:
+
+            # Request 1 GB of persistent storage.
+            storage: 1Gi
+
+
+# ============================================================
+# PART 2: SERVICE
+# ============================================================
+
+---
+
+apiVersion: v1
+
+# Create a Kubernetes Service.
+kind: Service
+
+metadata:
+  name: connection-db
+
+  labels:
+    app: connection-db
+
+spec:
+
+  # Headless Service.
+  #
+  # It does NOT get a normal ClusterIP.
+  # Instead, Kubernetes provides DNS-based access
+  # to the StatefulSet Pod.
+  clusterIP: None
+
+  ports:
+
+    # Service listens on port 7687.
+    - port: 7687
+
+      # Forward traffic to port 7687
+      # inside the Neo4j container.
+      targetPort: 7687
+
+      # Just a name for this port.
+      name: neo4j
+
+  # ----------------------------------------------------------
+  # WHICH POD SHOULD THIS SERVICE FIND?
+  # ----------------------------------------------------------
+
+  selector:
+
+    # Service looks for Pods having:
+    app: connection-db
