@@ -7,6 +7,11 @@ spring:
         # Name of this application
         name: config-server
 
+eureka:
+    client:
+        register-with-eureka: false
+        fetch-registry: false
+
     cloud:
         config:
             server:
