@@ -211,37 +211,24 @@ jobs:
               run: bash ./mvnw clean package -DskipTests
 
             # Build the Docker image and push it to Docker Hub
-            - name: Build and push Docker image
-              uses: docker/build-push-action@v5
+            - name: Build jar
+              working-directory: ${{ matrix.folder }}
 
-              with:
-
-                  # Docker build context
-                  #
-                  # matrix.folder changes depending on the service
-                  #
-                  # Example:
-                  # ./connectionService
-                  # ./postService
-                  context: ./${{ matrix.folder }}
-
-                  # Push the image to Docker Hub after building it
-                  push: true
-
-                  # Create TWO tags for the same image.
-                  # First tag = Git commit ID, e.g.
-                  #   jakhar0005/connect-sphere-user-service:a8f73b9
-                  # This gives every build a unique version.
-                  # Second tag = latest, e.g.
-                  #   jakhar0005/connect-sphere-user-service:latest
-                  #
-                  # NOTE: this is a literal block scalar (the "|"), so anything
-                  # indented under "tags:" becomes part of the actual value sent
-                  # to docker/build-push-action — comments must stay OUTSIDE
-                  # this block (above, like this) or they'd be treated as tags.
-                  tags: |
-                      ${{ secrets.DOCKER_USERNAME }}/${{ matrix.image }}:${{ steps.vars.outputs.tag }}
-                      ${{ secrets.DOCKER_USERNAME }}/${{ matrix.image }}:latest
+              # Create TWO tags for the same image.
+              # First tag = Git commit ID, e.g.
+              #   jakhar0005/connect-sphere-user-service:a8f73b9
+              # This gives every build a unique version.
+              # Second tag = latest, e.g.
+              #   jakhar0005/connect-sphere-user-service:latest
+              #
+              # NOTE: this is a literal block scalar (the "|"), so anything
+              # indented under "tags:" becomes part of the actual value sent
+              # to docker/build-push-action — comments must stay OUTSIDE
+              # this block (above, like this) or they'd be treated as tags.
+              run: |
+                bash ./mvnw clean package -DskipTests \
+                  -Djib.to.image=${{ secrets.DOCKER_USERNAME }}/${{ matrix.image }} \
+                  -Djib.to.tags=${{ steps.vars.outputs.tag }},latest
             
 
             # Authenticate GitHub Actions with Google Cloud
