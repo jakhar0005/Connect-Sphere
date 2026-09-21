@@ -28,12 +28,30 @@ spec:
           export KAFKA_CONTROLLER_QUORUM_VOTERS="0@localhost:29093" 
           exec /etc/confluent/docker/run
         env:
-        - name: KAFKA_CONTROLLER_LISTENER_NAMES
-          value: "CONTROLLER"
-        - name: KAFKA_LISTENERS
-          value: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:29093
+        - name: KAFKA_PROCESS_ROLES
+          value: "broker,controller"
+
+        - name: KAFKA_INTER_BROKER_LISTENER_NAME
+          value: "PLAINTEXT"
+
+        - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+          value: "1"
+
+        - name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
+          value: "1"
+
+        - name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR
+          value: "1"
+
+        - name: KAFKA_MIN_INSYNC_REPLICAS
+          value: "1"
+
+        - name: KAFKA_DEFAULT_REPLICATION_FACTOR
+          value: "1"
+
         - name: KAFKA_HEAP_OPTS
           value: "-Xms512m -Xmx768m"
+
         - name: POD_NAME
           valueFrom:
             fieldRef:
