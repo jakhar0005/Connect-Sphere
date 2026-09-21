@@ -24,8 +24,6 @@ spec:
         - |
           export CLUSTER_ID="6PMpHYL9QkeyXRj9Nrp4KA" && \
           export KAFKA_NODE_ID=${HOSTNAME##*-} 
-          export KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://${POD_NAME}.kafka:9092
-          export KAFKA_CONTROLLER_QUORUM_VOTERS="0@localhost:29093" 
           exec /etc/confluent/docker/run
         env:
         - name: KAFKA_PROCESS_ROLES
