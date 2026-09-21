@@ -18,3 +18,27 @@ IN GKE image running doesnt get updated itself if you doesnt have image:tag, it 
 start the cached image again so have to explicitly use below command and also change version in pom.xml
 then it will work properky if you want to automate use github actions.
 kubectl set image deployment/config-server config-server=jakhar0005/connect-sphere-config-server:0.0.5-SNAPSHOT
+
+Now if you want see the the what is saved on db on gke on google cloud.
+Use portforward kubectl port-forward pod/connection-db-0 7687:7687(LOCAL PORT : POD PORT)
+same goes for other services
+kubectl port-forward pod/user-db-0 5443:5432
+kubectl port-forward pod/post-db-0 5444:5432
+kubectl port-forward pod/notification-db-0 5445:5432
+Run all these in separate tabs.
+Then go to you neo4j desktop app click on remote connection enter url localhost:7687 
+and username ,password. Then you are good to go.
+Your Laptop
+localhost:7687
+│
+│  port-forward tunnel
+▼
+GKE connection-db-0
+localhost:7687
+│
+▼
+Neo4j
+
+To hit any api from postman you have to know the ip of api gateway 
+so in terminal just hit command kubectl get svc api-gateway and use the external-ip
+to call.
